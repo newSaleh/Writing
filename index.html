@@ -78,13 +78,20 @@
     }
   }
 
+  .app-shell {
+    display: flex;
+    min-height: 100vh;
+    min-height: 100dvh;
+    justify-content: center;
+  }
+
   .page {
     min-height: 100vh;
     min-height: 100dvh;
     display: flex;
     flex-direction: column;
+    flex: 1 1 auto;
     max-width: 720px;
-    margin: 0 auto;
     padding: calc(env(safe-area-inset-top, 0px) + 28px) max(20px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 16px) max(20px, env(safe-area-inset-left, 0px));
     width: 100%;
   }
@@ -532,6 +539,11 @@
     height: 20px;
   }
 
+  #pointsPinBtn[aria-pressed="true"] {
+    color: var(--text);
+    background: var(--border);
+  }
+
   .export-title-label {
     flex: 1 1 auto;
     margin: 0;
@@ -889,6 +901,229 @@
     margin: 0;
   }
 
+  /* ---- Writing points panel ---- */
+
+  .points-toggle-btn {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 16px);
+    left: max(16px, env(safe-area-inset-left, 0px));
+    z-index: 25;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    background: var(--bg);
+    color: var(--muted);
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .points-toggle-btn:hover {
+    color: var(--text);
+  }
+
+  .points-toggle-btn:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .points-toggle-btn svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .points-toggle-btn[hidden] {
+    display: none;
+  }
+
+  .points-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(28, 26, 23, 0.35);
+    z-index: 28;
+  }
+
+  .points-backdrop[hidden] {
+    display: none;
+  }
+
+  .points-panel {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  .points-panel[hidden] {
+    display: none;
+  }
+
+  .points-panel.docked {
+    flex: 0 0 260px;
+    align-self: stretch;
+    padding: calc(env(safe-area-inset-top, 0px) + 28px) max(16px, env(safe-area-inset-right, 0px)) 20px 4px;
+  }
+
+  .points-panel.floating {
+    position: fixed;
+    z-index: 29;
+    border: 1px solid var(--border-strong);
+    box-shadow: 0 10px 34px rgba(0, 0, 0, 0.16);
+    padding: 18px;
+  }
+
+  @media (min-width: 880px) {
+    .points-panel.floating {
+      top: calc(env(safe-area-inset-top, 0px) + 16px);
+      left: max(16px, env(safe-area-inset-left, 0px));
+      width: 300px;
+      max-height: min(72vh, 540px);
+      border-radius: 14px;
+    }
+  }
+
+  @media (max-width: 879.98px) {
+    .points-panel.floating {
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      max-height: 72vh;
+      border-radius: 20px 20px 0 0;
+      padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+    }
+  }
+
+  .points-panel-header {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-bottom: 14px;
+  }
+
+  .points-panel-title {
+    flex: 1 1 auto;
+    margin: 0;
+    font-size: 0.98rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .points-panel.docked .points-close-btn {
+    display: none;
+  }
+
+  .points-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .point-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 2px;
+  }
+
+  .point-checkbox {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 1.5px solid var(--border-strong);
+    border-radius: 6px;
+    background: transparent;
+    color: transparent;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .point-checkbox svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .point-checkbox[aria-checked="true"] {
+    background: var(--ink-bg);
+    border-color: var(--ink-bg);
+    color: var(--ink-text);
+  }
+
+  .point-checkbox:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .point-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    outline: none;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    padding: 3px 2px;
+  }
+
+  .point-text::placeholder {
+    color: var(--muted);
+    opacity: 0.55;
+  }
+
+  .point-item.is-done .point-text {
+    color: var(--muted);
+    text-decoration: line-through;
+    text-decoration-color: var(--muted);
+  }
+
+  .add-point-btn {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 9px 4px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .add-point-btn:hover {
+    color: var(--text);
+  }
+
+  .add-point-btn:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .add-point-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
   @media (max-width: 480px) {
     .page {
       padding-left: max(16px, env(safe-area-inset-left, 0px));
@@ -907,6 +1142,7 @@
 </head>
 <body>
 
+<div class="app-shell">
 <div class="page">
   <div class="topbar">
     <div class="font-stepper" role="group" aria-label="حجم خط الكتابة">
@@ -984,6 +1220,41 @@
     </div>
   </footer>
 </div>
+
+<aside id="pointsPanel" class="points-panel" hidden>
+  <div class="points-panel-header">
+    <h2 class="points-panel-title">رؤوس الأقلام</h2>
+    <button id="pointsPinBtn" class="icon-btn" type="button" aria-pressed="false" aria-label="تثبيت النافذة بجانب الكتابة">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="12" y1="17" x2="12" y2="22" />
+        <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1v3.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" />
+      </svg>
+    </button>
+    <button id="pointsCloseBtn" class="icon-btn points-close-btn" type="button" aria-label="إغلاق رؤوس الأقلام">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M6 6l12 12M18 6L6 18" />
+      </svg>
+    </button>
+  </div>
+  <ul id="pointsList" class="points-list"></ul>
+  <button id="addPointBtn" class="add-point-btn" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+    <span>إضافة نقطة</span>
+  </button>
+</aside>
+</div>
+
+<div id="pointsBackdrop" class="points-backdrop" hidden></div>
+
+<button id="pointsToggleBtn" class="points-toggle-btn" type="button" aria-label="فتح رؤوس الأقلام">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <rect x="4" y="5" width="16" height="3" rx="1" />
+    <rect x="4" y="10.5" width="16" height="3" rx="1" />
+    <rect x="4" y="16" width="16" height="3" rx="1" />
+  </svg>
+</button>
 
 <div id="exportOverlay" class="export-overlay" hidden role="dialog" aria-modal="true" aria-label="معاينة التصدير">
   <div class="export-topbar">
@@ -1071,6 +1342,7 @@
   "use strict";
 
   var STORAGE_KEY = "dailyJournal.entry";
+  var POINTS_PINNED_KEY = "dailyJournal.pointsPinned";
   var THEME_KEY = "dailyJournal.theme";
   var EDITOR_FONT_KEY = "dailyJournal.editorFontSize";
   var LIGHT_COLOR = "#f6f1e7";
@@ -1215,6 +1487,14 @@
   var themeToggle = document.getElementById("themeToggle");
   var themeColorMeta = document.getElementById("themeColorMeta");
 
+  var pointsPanel = document.getElementById("pointsPanel");
+  var pointsList = document.getElementById("pointsList");
+  var addPointBtn = document.getElementById("addPointBtn");
+  var pointsPinBtn = document.getElementById("pointsPinBtn");
+  var pointsCloseBtn = document.getElementById("pointsCloseBtn");
+  var pointsToggleBtn = document.getElementById("pointsToggleBtn");
+  var pointsBackdrop = document.getElementById("pointsBackdrop");
+
   var editorFontDecreaseBtn = document.getElementById("editorFontDecrease");
   var editorFontIncreaseBtn = document.getElementById("editorFontIncrease");
   var editorFontSizeValueEl = document.getElementById("editorFontSizeValue");
@@ -1263,6 +1543,9 @@
   var pendingImageDataUrl = null;
   var pendingInsertionStart = 0;
   var pendingInsertionEnd = 0;
+  var points = [];
+  var pointsPinned = false;
+  var pointsPanelOpen = false;
 
   var ARABIC_MONTHS = [
     "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
@@ -1302,7 +1585,8 @@
       var data = {
         title: titleEl.value,
         date: dateEl.value,
-        text: editorEl.value
+        text: editorEl.value,
+        points: points
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch (e) {
@@ -2144,16 +2428,159 @@
     }
   }
 
+  function makePointId() {
+    return "pt_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
+  }
+
+  function renderPoints() {
+    pointsList.innerHTML = "";
+    points.forEach(function (point) {
+      var li = document.createElement("li");
+      li.className = "point-item" + (point.done ? " is-done" : "");
+      li.dataset.id = point.id;
+
+      var checkbox = document.createElement("button");
+      checkbox.type = "button";
+      checkbox.className = "point-checkbox";
+      checkbox.setAttribute("role", "checkbox");
+      checkbox.setAttribute("aria-checked", point.done ? "true" : "false");
+      checkbox.setAttribute("aria-label", "وضع علامة على النقطة كمكتملة");
+      checkbox.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6" /></svg>';
+      checkbox.addEventListener("click", function () {
+        togglePointDone(point.id);
+      });
+
+      var input = document.createElement("input");
+      input.type = "text";
+      input.className = "point-text";
+      input.placeholder = "اكتب فكرة…";
+      input.value = point.text;
+      input.dir = "auto";
+      input.addEventListener("input", function () {
+        point.text = input.value;
+        savePoints();
+      });
+      input.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          addPoint();
+        }
+      });
+      input.addEventListener("blur", function () {
+        if (input.value.trim() === "") {
+          removePoint(point.id);
+        }
+      });
+
+      li.appendChild(checkbox);
+      li.appendChild(input);
+      pointsList.appendChild(li);
+    });
+  }
+
+  function savePoints() {
+    saveEntry();
+  }
+
+  function addPoint() {
+    var point = { id: makePointId(), text: "", done: false };
+    points.push(point);
+    renderPoints();
+    savePoints();
+    var lastInput = pointsList.querySelector('.point-item:last-child .point-text');
+    if (lastInput) lastInput.focus();
+  }
+
+  function togglePointDone(id) {
+    var point = points.filter(function (p) { return p.id === id; })[0];
+    if (!point) return;
+    point.done = !point.done;
+    renderPoints();
+    savePoints();
+  }
+
+  function removePoint(id) {
+    var idx = points.findIndex(function (p) { return p.id === id; });
+    if (idx === -1) return;
+    points.splice(idx, 1);
+    renderPoints();
+    savePoints();
+  }
+
+  function getStoredPointsPinned() {
+    try {
+      return localStorage.getItem(POINTS_PINNED_KEY) === "true";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function isDesktopLayout() {
+    return window.matchMedia && window.matchMedia("(min-width: 880px)").matches;
+  }
+
+  function updatePointsVisibility() {
+    var showDocked = isDesktopLayout() && pointsPinned;
+    var showFloating = !showDocked && pointsPanelOpen;
+    pointsPanel.hidden = !(showDocked || showFloating);
+    pointsPanel.classList.toggle("docked", showDocked);
+    pointsPanel.classList.toggle("floating", showFloating);
+    pointsToggleBtn.hidden = showDocked;
+    pointsBackdrop.hidden = !showFloating;
+    pointsPinBtn.setAttribute("aria-pressed", pointsPinned ? "true" : "false");
+    pointsPinBtn.setAttribute("aria-label", pointsPinned ? "إلغاء تثبيت النافذة" : "تثبيت النافذة بجانب الكتابة");
+  }
+
+  function openPointsPanel() {
+    pointsPanelOpen = true;
+    updatePointsVisibility();
+    document.addEventListener("keydown", onPointsPanelKeydown);
+    var firstInput = pointsList.querySelector(".point-text");
+    if (firstInput) {
+      firstInput.focus();
+    } else {
+      addPointBtn.focus();
+    }
+  }
+
+  function closePointsPanel() {
+    pointsPanelOpen = false;
+    updatePointsVisibility();
+    document.removeEventListener("keydown", onPointsPanelKeydown);
+    pointsToggleBtn.focus();
+  }
+
+  function onPointsPanelKeydown(e) {
+    if (e.key === "Escape") {
+      closePointsPanel();
+    }
+  }
+
+  function togglePointsPin() {
+    pointsPinned = !pointsPinned;
+    try {
+      localStorage.setItem(POINTS_PINNED_KEY, String(pointsPinned));
+    } catch (e) {
+      /* ignore */
+    }
+    updatePointsVisibility();
+  }
+
   function init() {
     var saved = loadEntry();
     if (saved) {
       titleEl.value = saved.title || "";
       editorEl.value = saved.text || "";
       dateEl.value = saved.date || todayISO();
+      points = Array.isArray(saved.points) ? saved.points : [];
     } else {
       dateEl.value = todayISO();
+      points = [];
     }
+    renderPoints();
     updateWordCount();
+    pointsPinned = getStoredPointsPinned();
+    updatePointsVisibility();
   }
 
   function buildCopyText() {
@@ -2233,6 +2660,8 @@
     titleEl.value = "";
     editorEl.value = "";
     dateEl.value = todayISO();
+    points = [];
+    renderPoints();
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch (e) {
@@ -2270,6 +2699,15 @@
   });
 
   themeToggle.addEventListener("click", toggleTheme);
+
+  addPointBtn.addEventListener("click", addPoint);
+  pointsPinBtn.addEventListener("click", togglePointsPin);
+  pointsToggleBtn.addEventListener("click", openPointsPanel);
+  pointsCloseBtn.addEventListener("click", closePointsPanel);
+  pointsBackdrop.addEventListener("click", closePointsPanel);
+  window.addEventListener("resize", function () {
+    updatePointsVisibility();
+  });
 
   focusModeBtn.addEventListener("click", function () {
     setFocusMode(!isFocusMode);
