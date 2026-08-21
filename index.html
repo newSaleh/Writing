@@ -173,11 +173,22 @@
   .actions {
     flex: 0 0 auto;
     display: flex;
-    align-items: center;
+    flex-direction: column;
     gap: 12px;
-    padding-top: 20px;
+    padding-top: 16px;
     margin-top: 8px;
     border-top: 1px solid var(--border);
+  }
+
+  .word-count {
+    font-size: 0.9rem;
+    color: var(--muted);
+  }
+
+  .buttons-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
   }
 
   .btn {
@@ -340,8 +351,11 @@
   </main>
 
   <footer class="actions">
-    <button id="copyBtn" class="btn btn-primary" type="button">نسخ</button>
-    <button id="deleteBtn" class="btn btn-ghost" type="button">حذف</button>
+    <p id="wordCount" class="word-count" aria-live="polite">0 كلمة</p>
+    <div class="buttons-row">
+      <button id="copyBtn" class="btn btn-primary" type="button">نسخ</button>
+      <button id="deleteBtn" class="btn btn-ghost" type="button">حذف</button>
+    </div>
   </footer>
 </div>
 
@@ -368,6 +382,7 @@
   var editorEl = document.getElementById("editor");
   var copyBtn = document.getElementById("copyBtn");
   var deleteBtn = document.getElementById("deleteBtn");
+  var wordCountEl = document.getElementById("wordCount");
   var dialog = document.getElementById("confirmDialog");
   var cancelDeleteBtn = document.getElementById("cancelDelete");
   var confirmDeleteBtn = document.getElementById("confirmDelete");
@@ -419,6 +434,23 @@
     }
   }
 
+  function countWords(text) {
+    var matches = text.trim().match(/\S+/g);
+    return matches ? matches.length : 0;
+  }
+
+  function formatWordCount(n) {
+    if (n === 0) return "0 كلمة";
+    if (n === 1) return "كلمة واحدة";
+    if (n === 2) return "كلمتان";
+    if (n >= 3 && n <= 10) return n + " كلمات";
+    return n + " كلمة";
+  }
+
+  function updateWordCount() {
+    wordCountEl.textContent = formatWordCount(countWords(editorEl.value));
+  }
+
   function init() {
     var saved = loadEntry();
     if (saved) {
@@ -428,6 +460,7 @@
     } else {
       dateEl.value = todayISO();
     }
+    updateWordCount();
   }
 
   function buildCopyText() {
@@ -510,12 +543,16 @@
       /* ignore */
     }
     closeDialog();
+    updateWordCount();
     titleEl.focus();
   }
 
   titleEl.addEventListener("input", saveEntry);
   dateEl.addEventListener("change", saveEntry);
-  editorEl.addEventListener("input", saveEntry);
+  editorEl.addEventListener("input", function () {
+    saveEntry();
+    updateWordCount();
+  });
 
   copyBtn.addEventListener("click", function () {
     copyToClipboard(buildCopyText());
