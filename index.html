@@ -412,35 +412,21 @@
     font-weight: 600;
   }
 
+  .format-glyph-a-small {
+    font-size: 0.75rem;
+  }
+
+  .format-glyph-a-large {
+    font-size: 1.2rem;
+    font-weight: 700;
+  }
+
   .format-sep {
     flex: 0 0 auto;
     width: 1px;
     height: 20px;
     background: var(--border-strong);
     margin: 0 3px;
-  }
-
-  .format-font-select {
-    flex: 0 0 auto;
-    height: 34px;
-    max-width: 84px;
-    border: none;
-    border-radius: 7px;
-    background: transparent;
-    color: var(--text);
-    font-family: inherit;
-    font-size: 0.8rem;
-    padding: 0 4px;
-    cursor: pointer;
-  }
-
-  .format-font-select:hover {
-    background: var(--border);
-  }
-
-  .format-font-select:focus-visible {
-    outline: 2px solid var(--focus);
-    outline-offset: 1px;
   }
 
   .actions {
@@ -1258,13 +1244,6 @@
       height: 30px;
     }
 
-    .format-font-select {
-      height: 30px;
-      max-width: 56px;
-      font-size: 0.72rem;
-      padding: 0 2px;
-    }
-
     .format-sep {
       margin: 0 1px;
     }
@@ -1357,11 +1336,8 @@
     <button type="button" class="format-btn" data-cmd="italic" aria-pressed="false" aria-label="مائل"><span class="format-glyph-i">I</span></button>
     <button type="button" class="format-btn" data-cmd="underline" aria-pressed="false" aria-label="تسطير"><span class="format-glyph-u">U</span></button>
     <span class="format-sep"></span>
-    <select id="fontFamilySelect" class="format-font-select" aria-label="نوع الخط">
-      <option value="default">افتراضي</option>
-      <option value="serif">مقروء</option>
-      <option value="mono">ثابت</option>
-    </select>
+    <button type="button" class="format-btn" id="fontSizeDecreaseBtn" aria-label="تصغير النص المحدد"><span class="format-glyph-a-small">A</span></button>
+    <button type="button" class="format-btn" id="fontSizeIncreaseBtn" aria-label="تكبير النص المحدد"><span class="format-glyph-a-large">A</span></button>
     <span class="format-sep"></span>
     <button type="button" class="format-btn" data-cmd="justifyRight" aria-pressed="false" aria-label="محاذاة يمين">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="20" y1="6" x2="4" y2="6" /><line x1="20" y1="12" x2="10" y2="12" /><line x1="20" y1="18" x2="6" y2="18" /></svg>
@@ -1648,15 +1624,12 @@
   var dateEl = document.getElementById("date");
   var editorEl = document.getElementById("editor");
   var formatToolbar = document.getElementById("formatToolbar");
-  var formatButtons = Array.prototype.slice.call(document.querySelectorAll(".format-btn"));
-  var fontFamilySelect = document.getElementById("fontFamilySelect");
+  var formatButtons = Array.prototype.slice.call(document.querySelectorAll(".format-btn[data-cmd]"));
+  var fontSizeDecreaseBtn = document.getElementById("fontSizeDecreaseBtn");
+  var fontSizeIncreaseBtn = document.getElementById("fontSizeIncreaseBtn");
   var savedFormatRange = null;
 
-  var FONT_STACKS = {
-    "default": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Naskh Arabic', 'Noto Sans Arabic', 'Helvetica Neue', Arial, sans-serif",
-    "serif": "serif",
-    "mono": "monospace"
-  };
+  var SELECTION_FONT_SCALE_STEP = 1.15;
   var copyBtn = document.getElementById("copyBtn");
   var deleteBtn = document.getElementById("deleteBtn");
   var wordCountEl = document.getElementById("wordCount");
@@ -1829,28 +1802,28 @@
     var runs = [];
     function walk(node, fmt) {
       if (node.nodeType === 3) {
-        if (node.nodeValue) runs.push({ text: node.nodeValue, bold: fmt.bold, italic: fmt.italic, underline: fmt.underline, font: fmt.font });
+        if (node.nodeValue) runs.push({ text: node.nodeValue, bold: fmt.bold, italic: fmt.italic, underline: fmt.underline, scale: fmt.scale });
         return;
       }
       if (node.nodeType !== 1) return;
       if (node.tagName === "BR") {
-        runs.push({ text: "\n", bold: fmt.bold, italic: fmt.italic, underline: fmt.underline, font: fmt.font });
+        runs.push({ text: "\n", bold: fmt.bold, italic: fmt.italic, underline: fmt.underline, scale: fmt.scale });
         return;
       }
       var weight = node.style && node.style.fontWeight;
       var decoration = node.style && (node.style.textDecorationLine || node.style.textDecoration);
-      var face = node.tagName === "FONT" ? node.getAttribute("face") : node.style && node.style.fontFamily;
+      var emMatch = node.style && node.style.fontSize && /^([\d.]+)em$/i.exec(node.style.fontSize);
       var next = {
         bold: fmt.bold || node.tagName === "B" || node.tagName === "STRONG" || weight === "bold" || weight === "700" || (parseInt(weight, 10) >= 600),
         italic: fmt.italic || node.tagName === "I" || node.tagName === "EM",
         underline: fmt.underline || node.tagName === "U" || (decoration && decoration.indexOf("underline") !== -1),
-        font: face || fmt.font
+        scale: fmt.scale * (emMatch ? parseFloat(emMatch[1]) : 1)
       };
       Array.prototype.forEach.call(node.childNodes, function (child) {
         walk(child, next);
       });
     }
-    walk(div, { bold: false, italic: false, underline: false, font: "" });
+    walk(div, { bold: false, italic: false, underline: false, scale: 1 });
     return runs;
   }
 
@@ -1905,7 +1878,7 @@
       if (run.bold) piece = "<b>" + piece + "</b>";
       if (run.italic) piece = "<i>" + piece + "</i>";
       if (run.underline) piece = "<u>" + piece + "</u>";
-      if (run.font) piece = '<span style="font-family:' + run.font.replace(/"/g, "'") + ';">' + piece + "</span>";
+      if (run.scale && run.scale !== 1) piece = '<span style="font-size:' + (Math.round(run.scale * 1000) / 1000) + 'em;">' + piece + "</span>";
       html += piece;
     }
     return html;
@@ -2980,20 +2953,6 @@
     formatToolbar.hidden = true;
   }
 
-  function normalizeFontValue(value) {
-    return (value || "").replace(/['"]/g, "").trim().toLowerCase();
-  }
-
-  function fontIdForValue(value) {
-    var normalized = normalizeFontValue(value);
-    for (var id in FONT_STACKS) {
-      if (Object.prototype.hasOwnProperty.call(FONT_STACKS, id) && normalizeFontValue(FONT_STACKS[id]) === normalized) {
-        return id;
-      }
-    }
-    return "default";
-  }
-
   function updateFormatButtonStates() {
     formatButtons.forEach(function (btn) {
       var pressed = false;
@@ -3004,13 +2963,34 @@
       }
       btn.setAttribute("aria-pressed", pressed ? "true" : "false");
     });
-    var fontValue = "";
-    try {
-      fontValue = document.queryCommandValue("fontName");
-    } catch (e) {
-      /* ignore */
+  }
+
+  function applyRelativeFontSize(ratio) {
+    var sel = window.getSelection();
+    var range = null;
+    if (sel.rangeCount && !sel.isCollapsed && editorEl.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+      range = sel.getRangeAt(0);
+    } else if (savedFormatRange && editorEl.contains(savedFormatRange.commonAncestorContainer)) {
+      range = savedFormatRange;
     }
-    fontFamilySelect.value = fontIdForValue(fontValue);
+    if (!range || range.collapsed) return;
+
+    var scale = Math.round(ratio * 1000) / 1000;
+    var span = document.createElement("span");
+    span.style.fontSize = scale + "em";
+    span.appendChild(range.extractContents());
+    range.insertNode(span);
+
+    editorEl.focus();
+    var newRange = document.createRange();
+    newRange.selectNodeContents(span);
+    sel.removeAllRanges();
+    sel.addRange(newRange);
+
+    updateParagraphDirs();
+    saveEntry();
+    updateWordCount();
+    updateExportAvailability();
   }
 
   function showFormatToolbarAt(rect) {
@@ -3321,7 +3301,7 @@
   });
 
   formatToolbar.addEventListener("mousedown", function (e) {
-    if (e.target.tagName !== "SELECT") e.preventDefault();
+    e.preventDefault();
   });
 
   formatButtons.forEach(function (btn) {
@@ -3334,18 +3314,12 @@
     });
   });
 
-  fontFamilySelect.addEventListener("change", function () {
-    var stack = FONT_STACKS[fontFamilySelect.value] || FONT_STACKS["default"];
-    editorEl.focus();
-    if (savedFormatRange) {
-      var sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(savedFormatRange);
-    }
-    document.execCommand("fontName", false, stack);
-    updateFormatButtonStates();
-    updateParagraphDirs();
-    saveEntry();
+  fontSizeIncreaseBtn.addEventListener("click", function () {
+    applyRelativeFontSize(SELECTION_FONT_SCALE_STEP);
+  });
+
+  fontSizeDecreaseBtn.addEventListener("click", function () {
+    applyRelativeFontSize(1 / SELECTION_FONT_SCALE_STEP);
   });
 
   copyBtn.addEventListener("click", copyEntry);
