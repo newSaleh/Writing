@@ -5,8 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>يوميات</title>
 <meta name="description" content="مساحة شخصية بسيطة للكتابة اليومية" />
-<meta name="theme-color" content="#f6f1e7" media="(prefers-color-scheme: light)" />
-<meta name="theme-color" content="#1c1a17" media="(prefers-color-scheme: dark)" />
+<meta id="themeColorMeta" name="theme-color" content="#f6f1e7" />
 <style>
   :root {
     --bg: #f6f1e7;
@@ -23,7 +22,7 @@
   }
 
   @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme="light"]) {
       --bg: #1c1a17;
       --text: #e9e3d6;
       --muted: #948b7c;
@@ -36,6 +35,20 @@
       --focus: #c7bca6;
       --success: #8fb097;
     }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #1c1a17;
+    --text: #e9e3d6;
+    --muted: #948b7c;
+    --border: rgba(233, 227, 214, 0.12);
+    --border-strong: rgba(233, 227, 214, 0.24);
+    --ink-bg: #e9e3d6;
+    --ink-text: #1c1a17;
+    --danger: #c98177;
+    --danger-bg: rgba(201, 129, 119, 0.1);
+    --focus: #c7bca6;
+    --success: #8fb097;
   }
 
   * {
@@ -76,6 +89,65 @@
     width: 100%;
   }
 
+  .topbar {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: flex-end;
+    padding-bottom: 8px;
+  }
+
+  .theme-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .theme-toggle:hover {
+    border-color: var(--border);
+    color: var(--text);
+  }
+
+  .theme-toggle:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .theme-toggle svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .theme-toggle .icon-moon {
+    display: none;
+  }
+
+  :root[data-theme="dark"] .theme-toggle .icon-sun {
+    display: none;
+  }
+
+  :root[data-theme="dark"] .theme-toggle .icon-moon {
+    display: block;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .theme-toggle .icon-sun {
+      display: none;
+    }
+
+    :root:not([data-theme="light"]) .theme-toggle .icon-moon {
+      display: block;
+    }
+  }
+
   .entry-header {
     flex: 0 0 auto;
     display: flex;
@@ -96,6 +168,7 @@
     line-height: 1.35;
     padding: 4px 2px;
     caret-color: var(--focus);
+    unicode-bidi: plaintext;
   }
 
   .title-input::placeholder {
@@ -163,6 +236,8 @@
     font-size: 1.15rem;
     line-height: 1.9;
     padding: 2px;
+    unicode-bidi: plaintext;
+    caret-color: var(--focus);
   }
 
   .editor::placeholder {
@@ -325,11 +400,23 @@
 <body>
 
 <div class="page">
+  <div class="topbar">
+    <button id="themeToggle" class="theme-toggle" type="button" aria-pressed="false" aria-label="التبديل إلى الوضع الليلي">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.5" />
+        <path d="M12 2.5v2.5M12 19v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M2.5 12H5M19 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8" />
+      </svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z" />
+      </svg>
+    </button>
+  </div>
   <header class="entry-header">
     <input
       id="title"
       class="title-input"
       type="text"
+      dir="auto"
       placeholder="عنوان اليوم…"
       autocomplete="off"
       autofocus
@@ -345,6 +432,7 @@
     <textarea
       id="editor"
       class="editor"
+      dir="auto"
       placeholder="ابدأ الكتابة هنا…"
       aria-label="مساحة الكتابة"
     ></textarea>
@@ -376,6 +464,9 @@
   "use strict";
 
   var STORAGE_KEY = "dailyJournal.entry";
+  var THEME_KEY = "dailyJournal.theme";
+  var LIGHT_COLOR = "#f6f1e7";
+  var DARK_COLOR = "#1c1a17";
 
   var titleEl = document.getElementById("title");
   var dateEl = document.getElementById("date");
@@ -387,6 +478,8 @@
   var cancelDeleteBtn = document.getElementById("cancelDelete");
   var confirmDeleteBtn = document.getElementById("confirmDelete");
   var liveStatus = document.getElementById("liveStatus");
+  var themeToggle = document.getElementById("themeToggle");
+  var themeColorMeta = document.getElementById("themeColorMeta");
 
   var ARABIC_MONTHS = [
     "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
@@ -449,6 +542,55 @@
 
   function updateWordCount() {
     wordCountEl.textContent = formatWordCount(countWords(editorEl.value));
+  }
+
+  function getStoredTheme() {
+    try {
+      return localStorage.getItem(THEME_KEY);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function systemPrefersDark() {
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+
+  function getEffectiveTheme() {
+    var stored = getStoredTheme();
+    if (stored === "light" || stored === "dark") return stored;
+    return systemPrefersDark() ? "dark" : "light";
+  }
+
+  function updateToggleUI(theme) {
+    var isDark = theme === "dark";
+    themeToggle.setAttribute("aria-pressed", isDark ? "true" : "false");
+    themeToggle.setAttribute("aria-label", isDark ? "التبديل إلى الوضع النهاري" : "التبديل إلى الوضع الليلي");
+    themeColorMeta.setAttribute("content", isDark ? DARK_COLOR : LIGHT_COLOR);
+  }
+
+  function initTheme() {
+    var stored = getStoredTheme();
+    if (stored === "light" || stored === "dark") {
+      document.documentElement.setAttribute("data-theme", stored);
+    }
+    updateToggleUI(getEffectiveTheme());
+    if (window.matchMedia) {
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
+        if (!getStoredTheme()) updateToggleUI(getEffectiveTheme());
+      });
+    }
+  }
+
+  function toggleTheme() {
+    var next = getEffectiveTheme() === "dark" ? "light" : "dark";
+    try {
+      localStorage.setItem(THEME_KEY, next);
+    } catch (e) {
+      /* ignore */
+    }
+    document.documentElement.setAttribute("data-theme", next);
+    updateToggleUI(next);
   }
 
   function init() {
@@ -568,6 +710,9 @@
     }
   });
 
+  themeToggle.addEventListener("click", toggleTheme);
+
+  initTheme();
   init();
 })();
 </script>
