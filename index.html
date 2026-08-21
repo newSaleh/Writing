@@ -93,6 +93,7 @@
     flex: 0 0 auto;
     display: flex;
     justify-content: flex-end;
+    gap: 8px;
     padding-bottom: 8px;
   }
 
@@ -376,6 +377,25 @@
     color: var(--ink-text);
   }
 
+  .caption-input {
+    width: 100%;
+    font-family: inherit;
+    font-size: 1rem;
+    color: var(--text);
+    background: transparent;
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 20px;
+    outline: none;
+  }
+
+  .caption-input:focus-visible {
+    border-color: var(--focus);
+    outline: 2px solid var(--focus);
+    outline-offset: 1px;
+  }
+
   .btn:disabled {
     opacity: 0.4;
     cursor: default;
@@ -587,10 +607,42 @@
 
   .export-page-body {
     text-align: start;
+    line-height: 1.8;
+  }
+
+  .export-text-chunk {
+    display: block;
     white-space: pre-wrap;
     word-wrap: break-word;
     unicode-bidi: plaintext;
-    line-height: 1.8;
+  }
+
+  .export-image-figure {
+    display: block;
+    margin: 36px auto;
+    text-align: center;
+  }
+
+  .export-image-figure img {
+    display: block;
+    margin: 0 auto;
+    max-width: 100%;
+    height: auto;
+  }
+
+  .export-image-caption {
+    margin-top: 14px;
+    opacity: 0.7;
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  .export-image-missing {
+    display: block;
+    margin: 24px auto;
+    text-align: center;
+    opacity: 0.6;
+    font-style: italic;
   }
 
   .export-page-footer {
@@ -742,6 +794,14 @@
 
 <div class="page">
   <div class="topbar">
+    <button id="insertImageBtn" class="icon-btn" type="button" aria-label="إدراج صورة">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+        <circle cx="8.5" cy="8.5" r="1.5" />
+        <path d="M21 15l-5-5L5 21" />
+      </svg>
+    </button>
+    <input id="imageFileInput" class="visually-hidden" type="file" accept="image/*" tabindex="-1" aria-hidden="true" />
     <button id="themeToggle" class="theme-toggle" type="button" aria-pressed="false" aria-label="التبديل إلى الوضع الليلي">
       <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <circle cx="12" cy="12" r="4.5" />
@@ -849,6 +909,17 @@
   </div>
 </div>
 
+<div id="captionDialog" class="dialog-overlay" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="captionDialogTitle">
+    <p id="captionDialogTitle" class="dialog-text">وصف الصورة (اختياري)</p>
+    <input id="captionInput" class="caption-input" type="text" dir="auto" placeholder="اكتب وصفًا قصيرًا…" />
+    <div class="dialog-actions">
+      <button id="captionSkip" class="btn btn-secondary" type="button">بدون وصف</button>
+      <button id="captionConfirm" class="btn btn-primary" type="button">إدراج</button>
+    </div>
+  </div>
+</div>
+
 <div id="liveStatus" class="visually-hidden" role="status" aria-live="polite"></div>
 
 <script>
@@ -870,6 +941,110 @@
   var BODY_LINE_HEIGHT = 1.8;
   var TITLE_FONT_RATIO = 1.35;
   var TITLE_MARGIN_BELOW = 40;
+  var IMAGE_MAX_DISPLAY_HEIGHT = 520;
+  var IMAGE_MARGIN_TOP = 36;
+  var IMAGE_MARGIN_BOTTOM = 36;
+  var CAPTION_MARGIN_TOP = 14;
+  var CAPTION_FONT_RATIO = 0.72;
+  var IMAGE_STORE_MAX_DIM = 1400;
+
+  var DB_NAME = "dailyJournalImages";
+  var DB_STORE = "images";
+
+  function openImageDB() {
+    return new Promise(function (resolve, reject) {
+      if (!window.indexedDB) {
+        reject(new Error("indexedDB unavailable"));
+        return;
+      }
+      var req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = function () {
+        req.result.createObjectStore(DB_STORE);
+      };
+      req.onsuccess = function () {
+        resolve(req.result);
+      };
+      req.onerror = function () {
+        reject(req.error);
+      };
+    });
+  }
+
+  function saveImageBlob(id, dataUrl) {
+    return openImageDB().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction(DB_STORE, "readwrite");
+        tx.objectStore(DB_STORE).put(dataUrl, id);
+        tx.oncomplete = function () {
+          resolve();
+        };
+        tx.onerror = function () {
+          reject(tx.error);
+        };
+      });
+    });
+  }
+
+  function loadImageBlob(id) {
+    return openImageDB().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction(DB_STORE, "readonly");
+        var req = tx.objectStore(DB_STORE).get(id);
+        req.onsuccess = function () {
+          resolve(req.result || null);
+        };
+        req.onerror = function () {
+          reject(req.error);
+        };
+      });
+    });
+  }
+
+  function deleteImageBlob(id) {
+    return openImageDB().then(function (db) {
+      return new Promise(function (resolve) {
+        var tx = db.transaction(DB_STORE, "readwrite");
+        tx.objectStore(DB_STORE).delete(id);
+        tx.oncomplete = function () {
+          resolve();
+        };
+        tx.onerror = function () {
+          resolve();
+        };
+      });
+    }).catch(function () {
+      /* best-effort cleanup only */
+    });
+  }
+
+  function processImageFile(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        var img = new Image();
+        img.onload = function () {
+          var maxDim = IMAGE_STORE_MAX_DIM;
+          var scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+          var w = Math.max(1, Math.round(img.naturalWidth * scale));
+          var h = Math.max(1, Math.round(img.naturalHeight * scale));
+          var canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          var ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL("image/jpeg", 0.85));
+        };
+        img.onerror = function () {
+          reject(new Error("image decode failed"));
+        };
+        img.src = reader.result;
+      };
+      reader.onerror = function () {
+        reject(reader.error);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
 
   var titleEl = document.getElementById("title");
   var dateEl = document.getElementById("date");
@@ -883,6 +1058,13 @@
   var liveStatus = document.getElementById("liveStatus");
   var themeToggle = document.getElementById("themeToggle");
   var themeColorMeta = document.getElementById("themeColorMeta");
+
+  var insertImageBtn = document.getElementById("insertImageBtn");
+  var imageFileInput = document.getElementById("imageFileInput");
+  var captionDialog = document.getElementById("captionDialog");
+  var captionInput = document.getElementById("captionInput");
+  var captionSkipBtn = document.getElementById("captionSkip");
+  var captionConfirmBtn = document.getElementById("captionConfirm");
 
   var exportBtn = document.getElementById("exportBtn");
   var exportOverlay = document.getElementById("exportOverlay");
@@ -911,6 +1093,10 @@
   var currentPages = [];
   var currentPageIndex = 0;
   var currentBgMode = "white";
+  var currentImageMeta = {};
+  var pendingImageDataUrl = null;
+  var pendingInsertionStart = 0;
+  var pendingInsertionEnd = 0;
 
   var ARABIC_MONTHS = [
     "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
@@ -959,7 +1145,7 @@
   }
 
   function countWords(text) {
-    var matches = text.trim().match(/\S+/g);
+    var matches = stripImageMarkersToCaption(text).trim().match(/\S+/g);
     return matches ? matches.length : 0;
   }
 
@@ -977,6 +1163,106 @@
 
   function updateExportAvailability() {
     exportBtn.disabled = !(titleEl.value.trim() || editorEl.value.trim());
+  }
+
+  var IMAGE_MARKER_RE = /!\[([^\]]*)\]\(([^)]+)\)/g;
+
+  function stripImageMarkersToCaption(text) {
+    return text.replace(IMAGE_MARKER_RE, function (whole, caption) {
+      return caption;
+    });
+  }
+
+  function stripImageMarkersForCopy(text) {
+    return text.replace(IMAGE_MARKER_RE, function (whole, caption) {
+      return caption ? "[صورة: " + caption + "]" : "[صورة]";
+    });
+  }
+
+  function collectImageIds(text) {
+    var ids = [];
+    var re = new RegExp(IMAGE_MARKER_RE.source, "g");
+    var m;
+    while ((m = re.exec(text))) {
+      if (ids.indexOf(m[2]) === -1) ids.push(m[2]);
+    }
+    return ids;
+  }
+
+  function parseContent(text) {
+    var segments = [];
+    var re = new RegExp(IMAGE_MARKER_RE.source, "g");
+    var lastIndex = 0;
+    var m;
+    while ((m = re.exec(text))) {
+      if (m.index > lastIndex) {
+        segments.push({ type: "text", text: text.slice(lastIndex, m.index) });
+      }
+      segments.push({ type: "image", caption: m[1], id: m[2] });
+      lastIndex = re.lastIndex;
+    }
+    if (lastIndex < text.length) {
+      segments.push({ type: "text", text: text.slice(lastIndex) });
+    }
+    return segments;
+  }
+
+  function insertMarkerAtSavedCursor(marker) {
+    var value = editorEl.value;
+    var start = pendingInsertionStart;
+    var end = pendingInsertionEnd;
+    var before = value.slice(0, start);
+    var after = value.slice(end);
+    var prefix = before.length === 0 ? "" : before.endsWith("\n\n") ? "" : before.endsWith("\n") ? "\n" : "\n\n";
+    var suffix = after.length === 0 ? "" : after.startsWith("\n\n") ? "" : after.startsWith("\n") ? "\n" : "\n\n";
+    var insertion = prefix + marker + suffix;
+    editorEl.value = before + insertion + after;
+    var cursorPos = (before + insertion).length;
+    editorEl.focus();
+    editorEl.setSelectionRange(cursorPos, cursorPos);
+    saveEntry();
+    updateWordCount();
+    updateExportAvailability();
+  }
+
+  function openCaptionDialog() {
+    captionInput.value = "";
+    captionDialog.hidden = false;
+    captionInput.focus();
+    document.addEventListener("keydown", onCaptionDialogKeydown);
+  }
+
+  function closeCaptionDialog() {
+    captionDialog.hidden = true;
+    document.removeEventListener("keydown", onCaptionDialogKeydown);
+    pendingImageDataUrl = null;
+    insertImageBtn.focus();
+  }
+
+  function onCaptionDialogKeydown(e) {
+    if (e.key === "Escape") {
+      closeCaptionDialog();
+    }
+  }
+
+  function confirmInsertImage(caption) {
+    var dataUrl = pendingImageDataUrl;
+    if (!dataUrl) {
+      closeCaptionDialog();
+      return;
+    }
+    var id = "img_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
+    var cleanCaption = (caption || "").replace(/[[\]\n]/g, " ").trim();
+    saveImageBlob(id, dataUrl)
+      .then(function () {
+        insertMarkerAtSavedCursor("![" + cleanCaption + "](" + id + ")");
+      })
+      .catch(function () {
+        window.alert("تعذّر حفظ الصورة. تأكد من توفر مساحة تخزين كافية في المتصفح.");
+      });
+    captionDialog.hidden = true;
+    document.removeEventListener("keydown", onCaptionDialogKeydown);
+    pendingImageDataUrl = null;
   }
 
   function getStoredBgMode() {
@@ -1060,31 +1346,123 @@
     return best;
   }
 
-  function paginate(fullText, titleText, fontSizePx) {
+  function computeImageDisplaySize(naturalW, naturalH) {
+    var maxW = CONTENT_WIDTH;
+    var maxH = IMAGE_MAX_DISPLAY_HEIGHT;
+    var scale = Math.min(maxW / naturalW, maxH / naturalH, 1);
+    return { w: Math.max(1, Math.round(naturalW * scale)), h: Math.max(1, Math.round(naturalH * scale)) };
+  }
+
+  function measureCaptionHeight(caption, displayWidth, fontSizePx) {
+    measureBox.style.width = displayWidth + "px";
+    measureBox.style.fontSize = Math.round(fontSizePx * CAPTION_FONT_RATIO) + "px";
+    measureBox.style.lineHeight = "1.5";
+    var h = measureHeight(caption);
     configureMeasureBox(fontSizePx);
-    if (fullText.length === 0) {
-      return [{ title: titleText || null, body: "" }];
-    }
-    var breakpoints = computeBreakPoints(fullText);
+    return h + CAPTION_MARGIN_TOP;
+  }
+
+  function paginateContent(fullText, titleText, fontSizePx, imageMeta) {
+    configureMeasureBox(fontSizePx);
+    var segments = parseContent(fullText);
     var titleHeight = titleText ? measureTitleHeight(titleText, fontSizePx) : 0;
-    var pages = [];
-    var idx = 0;
-    var first = true;
     var minLine = fontSizePx * BODY_LINE_HEIGHT;
-    while (idx < fullText.length) {
-      var available = CONTENT_HEIGHT_MAX - (first ? titleHeight : 0);
-      if (available < minLine) available = minLine;
-      var cut = findCut(fullText, idx, breakpoints, available);
-      if (cut <= idx) cut = fullText.length;
-      pages.push({ title: first ? (titleText || null) : null, body: fullText.slice(idx, cut) });
-      idx = cut;
-      first = false;
+
+    var pages = [];
+    var curItems = [];
+    var curHeight = 0;
+
+    function pageAvailable() {
+      return CONTENT_HEIGHT_MAX - (pages.length === 0 ? titleHeight : 0);
+    }
+
+    function pushPage() {
+      pages.push({ title: pages.length === 0 ? titleText || null : null, items: curItems });
+      curItems = [];
+      curHeight = 0;
+    }
+
+    segments.forEach(function (seg) {
+      if (seg.type === "text") {
+        var t = seg.text;
+        if (t.length === 0) return;
+        var breakpoints = computeBreakPoints(t);
+        var idx = 0;
+        while (idx < t.length) {
+          var avail = pageAvailable() - curHeight;
+          if (avail < minLine) {
+            pushPage();
+            avail = pageAvailable();
+          }
+          var cut = findCut(t, idx, breakpoints, avail);
+          if (cut <= idx) cut = t.length;
+          var chunk = t.slice(idx, cut);
+          curItems.push({ type: "text", body: chunk });
+          curHeight += measureHeight(chunk);
+          idx = cut;
+        }
+      } else {
+        var meta = imageMeta[seg.id];
+        if (!meta) {
+          curItems.push({ type: "missing" });
+          curHeight += 40;
+          return;
+        }
+        var dims = computeImageDisplaySize(meta.w, meta.h);
+        var capH = seg.caption ? measureCaptionHeight(seg.caption, dims.w, fontSizePx) : 0;
+        var blockH = dims.h + capH + IMAGE_MARGIN_TOP + IMAGE_MARGIN_BOTTOM;
+        var avail = pageAvailable() - curHeight;
+        if (blockH > avail && curItems.length > 0) {
+          pushPage();
+        }
+        curItems.push({ type: "image", dataUrl: meta.dataUrl, caption: seg.caption, w: dims.w, h: dims.h });
+        curHeight += blockH;
+      }
+    });
+
+    if (curItems.length > 0 || pages.length === 0) {
+      pushPage();
     }
     return pages;
   }
 
+  function collectImageIdsFromEditor() {
+    return collectImageIds(editorEl.value);
+  }
+
+  function loadImageMeta(ids) {
+    if (ids.length === 0) return Promise.resolve({});
+    return Promise.all(
+      ids.map(function (id) {
+        return loadImageBlob(id)
+          .then(function (dataUrl) {
+            if (!dataUrl) return [id, null];
+            return new Promise(function (resolve) {
+              var img = new Image();
+              img.onload = function () {
+                resolve([id, { dataUrl: dataUrl, w: img.naturalWidth, h: img.naturalHeight }]);
+              };
+              img.onerror = function () {
+                resolve([id, null]);
+              };
+              img.src = dataUrl;
+            });
+          })
+          .catch(function () {
+            return [id, null];
+          });
+      })
+    ).then(function (pairs) {
+      var map = {};
+      pairs.forEach(function (p) {
+        map[p[0]] = p[1];
+      });
+      return map;
+    });
+  }
+
   function recomputePagination() {
-    currentPages = paginate(editorEl.value, titleEl.value.trim(), currentFontSize);
+    currentPages = paginateContent(editorEl.value, titleEl.value.trim(), currentFontSize, currentImageMeta);
   }
 
   function updatePreviewScale() {
@@ -1098,11 +1476,68 @@
     exportPageViewportEl.style.height = Math.round(PAGE_H * scale) + "px";
   }
 
+  function renderPageItems(container, items, fontSizePx) {
+    container.innerHTML = "";
+    items.forEach(function (item) {
+      if (item.type === "text") {
+        var span = document.createElement("span");
+        span.className = "export-text-chunk";
+        span.textContent = item.body;
+        container.appendChild(span);
+      } else if (item.type === "image") {
+        var figure = document.createElement("figure");
+        figure.className = "export-image-figure";
+        var img = document.createElement("img");
+        img.src = item.dataUrl;
+        img.width = item.w;
+        img.height = item.h;
+        img.alt = item.caption || "";
+        figure.appendChild(img);
+        if (item.caption) {
+          var cap = document.createElement("figcaption");
+          cap.className = "export-image-caption";
+          cap.textContent = item.caption;
+          cap.style.fontSize = Math.round(fontSizePx * CAPTION_FONT_RATIO) + "px";
+          figure.appendChild(cap);
+        }
+        container.appendChild(figure);
+      } else {
+        var missing = document.createElement("span");
+        missing.className = "export-image-missing";
+        missing.textContent = "[تعذّر تحميل الصورة]";
+        container.appendChild(missing);
+      }
+    });
+  }
+
+  function itemsToHTML(items, fontSizePx, colors) {
+    return items
+      .map(function (item) {
+        if (item.type === "text") {
+          return '<span style="display:block;white-space:pre-wrap;word-wrap:break-word;unicode-bidi:plaintext;">' + escapeHtml(item.body) + "</span>";
+        }
+        if (item.type === "image") {
+          var capHTML = item.caption
+            ? '<figcaption style="margin-top:' + CAPTION_MARGIN_TOP + "px;font-size:" + Math.round(fontSizePx * CAPTION_FONT_RATIO) + 'px;opacity:0.7;text-align:center;line-height:1.5;">' + escapeHtml(item.caption) + "</figcaption>"
+            : "";
+          return (
+            '<figure style="display:block;margin:' + IMAGE_MARGIN_TOP + "px auto " + IMAGE_MARGIN_BOTTOM + 'px;text-align:center;"><img src="' +
+            item.dataUrl +
+            '" width="' + item.w + '" height="' + item.h + '" style="display:block;margin:0 auto;max-width:100%;height:auto;" />' +
+            capHTML +
+            "</figure>"
+          );
+        }
+        return '<span style="display:block;text-align:center;opacity:0.6;font-style:italic;">[تعذّر تحميل الصورة]</span>';
+      })
+      .join("");
+  }
+
   function renderCurrentPage() {
     var total = currentPages.length;
     var page = currentPages[currentPageIndex];
     exportPageTitleEl.textContent = page.title || "";
-    exportPageBodyEl.textContent = page.body;
+    renderPageItems(exportPageBodyEl, page.items, currentFontSize);
     exportPageFooterEl.textContent = (currentPageIndex + 1) + " / " + total;
     exportPageBodyEl.style.fontSize = currentFontSize + "px";
     exportPageTitleEl.style.fontSize = Math.round(currentFontSize * TITLE_FONT_RATIO) + "px";
@@ -1141,13 +1576,21 @@
     currentFontSize = parseInt(fontSizeRange.value, 10) || 20;
     fontSizeValueEl.textContent = String(currentFontSize);
     setBgMode(getStoredBgMode() || "white");
-    recomputePagination();
-    currentPageIndex = 0;
     exportOverlay.hidden = false;
     document.body.style.overflow = "hidden";
     document.addEventListener("keydown", onExportKeydown);
-    renderCurrentPage();
     exportCloseBtn.focus();
+
+    var ids = collectImageIdsFromEditor();
+    if (ids.length > 0) {
+      exportPageBodyEl.innerHTML = '<span class="export-text-chunk">جارٍ التحضير…</span>';
+    }
+    loadImageMeta(ids).then(function (meta) {
+      currentImageMeta = meta;
+      recomputePagination();
+      currentPageIndex = 0;
+      renderCurrentPage();
+    });
   }
 
   function closeExport() {
@@ -1179,7 +1622,7 @@
       var body = document.createElement("div");
       body.className = "export-page-body";
       body.setAttribute("dir", "auto");
-      body.textContent = page.body;
+      renderPageItems(body, page.items, currentFontSize);
       body.style.fontSize = currentFontSize + "px";
       pageEl.appendChild(body);
 
@@ -1201,7 +1644,7 @@
     var titleHTML = pageData.title
       ? '<h2 style="margin:0 0 ' + TITLE_MARGIN_BELOW + 'px 0;padding-bottom:14px;border-bottom:3px solid ' + colors.text + ';color:' + colors.text + ';font-weight:700;font-size:' + Math.round(fontSizePx * TITLE_FONT_RATIO) + 'px;line-height:1.3;display:inline-block;max-width:100%;">' + escapeHtml(pageData.title) + "</h2>"
       : "";
-    var bodyHTML = '<div dir="auto" style="text-align:start;white-space:pre-wrap;word-wrap:break-word;unicode-bidi:plaintext;font-size:' + fontSizePx + 'px;line-height:' + BODY_LINE_HEIGHT + ';color:' + colors.text + ';">' + escapeHtml(pageData.body) + "</div>";
+    var bodyHTML = '<div dir="auto" style="text-align:start;font-size:' + fontSizePx + 'px;line-height:' + BODY_LINE_HEIGHT + ';color:' + colors.text + ';">' + itemsToHTML(pageData.items, fontSizePx, colors) + "</div>";
     var footerHTML = '<div style="position:absolute;bottom:34px;left:' + PAGE_PAD_X + 'px;font-size:15px;color:' + colors.text + ';opacity:' + colors.footerOpacity + ';">' + (index + 1) + " / " + total + "</div>";
 
     var inner =
@@ -1354,7 +1797,7 @@
   function buildCopyText() {
     var title = titleEl.value.trim();
     var dateLabel = formatArabicDate(dateEl.value || todayISO());
-    var text = editorEl.value;
+    var text = stripImageMarkersForCopy(editorEl.value);
     var lines = [];
     if (title) {
       lines.push(title, "");
@@ -1422,6 +1865,9 @@
   }
 
   function performDelete() {
+    collectImageIds(editorEl.value).forEach(function (id) {
+      deleteImageBlob(id);
+    });
     titleEl.value = "";
     editorEl.value = "";
     dateEl.value = todayISO();
@@ -1462,6 +1908,39 @@
   });
 
   themeToggle.addEventListener("click", toggleTheme);
+
+  insertImageBtn.addEventListener("click", function () {
+    pendingInsertionStart = editorEl.selectionStart;
+    pendingInsertionEnd = editorEl.selectionEnd;
+    imageFileInput.value = "";
+    imageFileInput.click();
+  });
+
+  imageFileInput.addEventListener("change", function () {
+    var file = imageFileInput.files && imageFileInput.files[0];
+    if (!file) return;
+    insertImageBtn.disabled = true;
+    processImageFile(file)
+      .then(function (dataUrl) {
+        insertImageBtn.disabled = false;
+        pendingImageDataUrl = dataUrl;
+        openCaptionDialog();
+      })
+      .catch(function () {
+        insertImageBtn.disabled = false;
+        window.alert("تعذّر معالجة هذه الصورة. جرّب صورة أخرى.");
+      });
+  });
+
+  captionSkipBtn.addEventListener("click", function () {
+    confirmInsertImage("");
+  });
+  captionConfirmBtn.addEventListener("click", function () {
+    confirmInsertImage(captionInput.value.trim());
+  });
+  captionDialog.addEventListener("click", function (e) {
+    if (e.target === captionDialog) closeCaptionDialog();
+  });
 
   exportBtn.addEventListener("click", openExport);
   exportCloseBtn.addEventListener("click", closeExport);
