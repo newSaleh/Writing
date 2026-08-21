@@ -199,6 +199,23 @@
     }
   }
 
+  .icon-btn .icon-compress {
+    display: none;
+  }
+
+  body.focus-mode .icon-btn .icon-expand {
+    display: none;
+  }
+
+  body.focus-mode .icon-btn .icon-compress {
+    display: block;
+  }
+
+  body.focus-mode .entry-header,
+  body.focus-mode .actions {
+    display: none;
+  }
+
   .entry-header {
     flex: 0 0 auto;
     display: flex;
@@ -906,6 +923,20 @@
         </svg>
       </button>
       <input id="imageFileInput" class="visually-hidden" type="file" accept="image/*" tabindex="-1" aria-hidden="true" />
+      <button id="focusModeBtn" class="icon-btn" type="button" aria-pressed="false" aria-label="وضع التركيز">
+        <svg class="icon-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="8 3 3 3 3 8"></polyline>
+          <polyline points="16 3 21 3 21 8"></polyline>
+          <polyline points="21 16 21 21 16 21"></polyline>
+          <polyline points="3 16 3 21 8 21"></polyline>
+        </svg>
+        <svg class="icon-compress" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="9 3 9 9 3 9"></polyline>
+          <polyline points="15 3 15 9 21 9"></polyline>
+          <polyline points="21 15 15 15 15 21"></polyline>
+          <polyline points="3 15 9 15 9 21"></polyline>
+        </svg>
+      </button>
       <button id="themeToggle" class="theme-toggle" type="button" aria-pressed="false" aria-label="التبديل إلى الوضع الليلي">
         <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="4.5" />
@@ -1190,6 +1221,7 @@
 
   var insertImageBtn = document.getElementById("insertImageBtn");
   var imageFileInput = document.getElementById("imageFileInput");
+  var focusModeBtn = document.getElementById("focusModeBtn");
   var captionDialog = document.getElementById("captionDialog");
   var captionInput = document.getElementById("captionInput");
   var captionSkipBtn = document.getElementById("captionSkip");
@@ -2100,6 +2132,18 @@
     updateToggleUI(next);
   }
 
+  var isFocusMode = false;
+
+  function setFocusMode(active) {
+    isFocusMode = active;
+    document.body.classList.toggle("focus-mode", active);
+    focusModeBtn.setAttribute("aria-pressed", active ? "true" : "false");
+    focusModeBtn.setAttribute("aria-label", active ? "الخروج من وضع التركيز" : "وضع التركيز");
+    if (active) {
+      editorEl.focus();
+    }
+  }
+
   function init() {
     var saved = loadEntry();
     if (saved) {
@@ -2226,6 +2270,15 @@
   });
 
   themeToggle.addEventListener("click", toggleTheme);
+
+  focusModeBtn.addEventListener("click", function () {
+    setFocusMode(!isFocusMode);
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && isFocusMode) {
+      setFocusMode(false);
+    }
+  });
 
   editorFontDecreaseBtn.addEventListener("click", function () {
     changeEditorFontSize(-EDITOR_FONT_STEP);
