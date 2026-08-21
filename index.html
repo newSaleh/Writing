@@ -488,6 +488,34 @@
     text-align: center;
   }
 
+  .bg-toggle {
+    display: flex;
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .bg-toggle-btn {
+    font-family: inherit;
+    font-size: 0.9rem;
+    padding: 8px 16px;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .bg-toggle-btn[aria-pressed="true"] {
+    background: var(--ink-bg);
+    color: var(--ink-text);
+  }
+
+  .bg-toggle-btn:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: -2px;
+  }
+
   .export-stage {
     flex: 1 1 auto;
     min-height: 0;
@@ -522,12 +550,22 @@
     width: 1000px;
     height: 1120px;
     box-sizing: border-box;
-    background: #f6f1e7;
-    color: #2e2a24;
     padding: 80px 90px 90px;
     direction: rtl;
     text-align: center;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Naskh Arabic", "Noto Sans Arabic", "Helvetica Neue", Arial, sans-serif;
+  }
+
+  .export-page.bg-white,
+  .print-page.bg-white {
+    background: #ffffff;
+    color: #000000;
+  }
+
+  .export-page.bg-black,
+  .print-page.bg-black {
+    background: #000000;
+    color: #ffffff;
   }
 
   .export-page-title {
@@ -535,8 +573,7 @@
     max-width: 100%;
     margin: 0 0 40px 0;
     padding-bottom: 14px;
-    border-bottom: 3px solid #9c3b35;
-    color: #9c3b35;
+    border-bottom: 3px solid currentColor;
     font-weight: 700;
     line-height: 1.3;
   }
@@ -561,8 +598,7 @@
     bottom: 34px;
     left: 90px;
     font-size: 15px;
-    color: #8a8175;
-    direction: ltr;
+    opacity: 0.55;
   }
 
   .nav-btn {
@@ -654,10 +690,8 @@
       width: 1000px;
       height: 1120px;
       box-sizing: border-box;
-      background: #f6f1e7 !important;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
-      color: #2e2a24;
       padding: 80px 90px 90px;
       position: relative;
       direction: rtl;
@@ -665,6 +699,16 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Naskh Arabic", "Noto Sans Arabic", "Helvetica Neue", Arial, sans-serif;
       page-break-after: always;
       break-after: page;
+    }
+
+    .print-page.bg-white {
+      background: #ffffff !important;
+      color: #000000;
+    }
+
+    .print-page.bg-black {
+      background: #000000 !important;
+      color: #ffffff;
     }
 
     .print-page:last-child {
@@ -758,8 +802,16 @@
 
   <div class="export-controls">
     <label for="fontSizeRange" class="export-control-label">حجم الخط</label>
-    <input id="fontSizeRange" type="range" min="14" max="30" step="1" value="20" />
+    <input id="fontSizeRange" type="range" min="14" max="56" step="1" value="20" />
     <span id="fontSizeValue" class="export-control-value">20</span>
+  </div>
+
+  <div class="export-controls">
+    <span class="export-control-label">الخلفية</span>
+    <div class="bg-toggle" role="group" aria-label="اختيار خلفية الصفحة">
+      <button id="bgWhiteBtn" class="bg-toggle-btn" type="button" aria-pressed="true">أبيض</button>
+      <button id="bgBlackBtn" class="bg-toggle-btn" type="button" aria-pressed="false">أسود</button>
+    </div>
   </div>
 
   <div class="export-stage">
@@ -838,6 +890,8 @@
   var exportPageIndicatorEl = document.getElementById("exportPageIndicator");
   var fontSizeRange = document.getElementById("fontSizeRange");
   var fontSizeValueEl = document.getElementById("fontSizeValue");
+  var bgWhiteBtn = document.getElementById("bgWhiteBtn");
+  var bgBlackBtn = document.getElementById("bgBlackBtn");
   var exportPageWrapEl = document.querySelector(".export-page-wrap");
   var exportPageViewportEl = document.getElementById("exportPageViewport");
   var exportPageEl = document.getElementById("exportPage");
@@ -852,9 +906,11 @@
   var measureBox = document.getElementById("measureBox");
   var titleMeasureBox = document.getElementById("titleMeasureBox");
 
+  var BG_KEY = "dailyJournal.exportBg";
   var currentFontSize = 20;
   var currentPages = [];
   var currentPageIndex = 0;
+  var currentBgMode = "white";
 
   var ARABIC_MONTHS = [
     "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
@@ -921,6 +977,35 @@
 
   function updateExportAvailability() {
     exportBtn.disabled = !(titleEl.value.trim() || editorEl.value.trim());
+  }
+
+  function getStoredBgMode() {
+    try {
+      var v = localStorage.getItem(BG_KEY);
+      return v === "white" || v === "black" ? v : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function setBgMode(mode) {
+    currentBgMode = mode;
+    try {
+      localStorage.setItem(BG_KEY, mode);
+    } catch (e) {
+      /* ignore */
+    }
+    exportPageEl.classList.toggle("bg-white", mode === "white");
+    exportPageEl.classList.toggle("bg-black", mode === "black");
+    bgWhiteBtn.setAttribute("aria-pressed", mode === "white" ? "true" : "false");
+    bgBlackBtn.setAttribute("aria-pressed", mode === "black" ? "true" : "false");
+  }
+
+  function getExportColors() {
+    if (currentBgMode === "black") {
+      return { bg: "#000000", text: "#ffffff", footerOpacity: 0.55 };
+    }
+    return { bg: "#ffffff", text: "#000000", footerOpacity: 0.55 };
   }
 
   function computeBreakPoints(text) {
@@ -1055,6 +1140,7 @@
     if (exportBtn.disabled) return;
     currentFontSize = parseInt(fontSizeRange.value, 10) || 20;
     fontSizeValueEl.textContent = String(currentFontSize);
+    setBgMode(getStoredBgMode() || "white");
     recomputePagination();
     currentPageIndex = 0;
     exportOverlay.hidden = false;
@@ -1082,7 +1168,7 @@
     var total = currentPages.length;
     currentPages.forEach(function (page, i) {
       var pageEl = document.createElement("div");
-      pageEl.className = "print-page";
+      pageEl.className = "print-page " + (currentBgMode === "black" ? "bg-black" : "bg-white");
       if (page.title) {
         var h = document.createElement("h2");
         h.className = "export-page-title";
@@ -1111,14 +1197,15 @@
   }
 
   function buildPageSVG(pageData, index, total, fontSizePx) {
+    var colors = getExportColors();
     var titleHTML = pageData.title
-      ? '<h2 style="margin:0 0 ' + TITLE_MARGIN_BELOW + 'px 0;padding-bottom:14px;border-bottom:3px solid #9c3b35;color:#9c3b35;font-weight:700;font-size:' + Math.round(fontSizePx * TITLE_FONT_RATIO) + 'px;line-height:1.3;display:inline-block;max-width:100%;">' + escapeHtml(pageData.title) + "</h2>"
+      ? '<h2 style="margin:0 0 ' + TITLE_MARGIN_BELOW + 'px 0;padding-bottom:14px;border-bottom:3px solid ' + colors.text + ';color:' + colors.text + ';font-weight:700;font-size:' + Math.round(fontSizePx * TITLE_FONT_RATIO) + 'px;line-height:1.3;display:inline-block;max-width:100%;">' + escapeHtml(pageData.title) + "</h2>"
       : "";
-    var bodyHTML = '<div dir="auto" style="text-align:start;white-space:pre-wrap;word-wrap:break-word;unicode-bidi:plaintext;font-size:' + fontSizePx + 'px;line-height:' + BODY_LINE_HEIGHT + ';color:#2e2a24;">' + escapeHtml(pageData.body) + "</div>";
-    var footerHTML = '<div style="position:absolute;bottom:34px;left:' + PAGE_PAD_X + 'px;font-size:15px;color:#8a8175;direction:ltr;">' + (index + 1) + " / " + total + "</div>";
+    var bodyHTML = '<div dir="auto" style="text-align:start;white-space:pre-wrap;word-wrap:break-word;unicode-bidi:plaintext;font-size:' + fontSizePx + 'px;line-height:' + BODY_LINE_HEIGHT + ';color:' + colors.text + ';">' + escapeHtml(pageData.body) + "</div>";
+    var footerHTML = '<div style="position:absolute;bottom:34px;left:' + PAGE_PAD_X + 'px;font-size:15px;color:' + colors.text + ';opacity:' + colors.footerOpacity + ';">' + (index + 1) + " / " + total + "</div>";
 
     var inner =
-      '<div xmlns="http://www.w3.org/1999/xhtml" style="width:' + PAGE_W + "px;height:" + PAGE_H + "px;box-sizing:border-box;background:#f6f1e7;padding:" + PAGE_PAD_TOP + "px " + PAGE_PAD_X + "px " + PAGE_PAD_BOTTOM + 'px;position:relative;direction:rtl;text-align:center;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,\'Noto Naskh Arabic\',\'Noto Sans Arabic\',\'Helvetica Neue\',Arial,sans-serif;">' +
+      '<div xmlns="http://www.w3.org/1999/xhtml" style="width:' + PAGE_W + "px;height:" + PAGE_H + "px;box-sizing:border-box;background:" + colors.bg + ";padding:" + PAGE_PAD_TOP + "px " + PAGE_PAD_X + "px " + PAGE_PAD_BOTTOM + 'px;position:relative;direction:rtl;text-align:center;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,\'Noto Naskh Arabic\',\'Noto Sans Arabic\',\'Helvetica Neue\',Arial,sans-serif;">' +
       titleHTML + bodyHTML + footerHTML +
       "</div>";
 
@@ -1133,7 +1220,7 @@
       var ctx = canvas.getContext("2d");
       var img = new Image();
       img.onload = function () {
-        ctx.fillStyle = "#f6f1e7";
+        ctx.fillStyle = getExportColors().bg;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         resolve(canvas);
@@ -1382,6 +1469,13 @@
   nextPageBtn.addEventListener("click", goNextPage);
   window.addEventListener("resize", function () {
     if (!exportOverlay.hidden) updatePreviewScale();
+  });
+
+  bgWhiteBtn.addEventListener("click", function () {
+    setBgMode("white");
+  });
+  bgBlackBtn.addEventListener("click", function () {
+    setBgMode("black");
   });
 
   fontSizeRange.addEventListener("input", function () {
