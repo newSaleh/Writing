@@ -1064,7 +1064,8 @@
   var IMAGE_MARGIN_BOTTOM = 36;
   var CAPTION_MARGIN_TOP = 14;
   var CAPTION_FONT_RATIO = 0.72;
-  var IMAGE_STORE_MAX_DIM = 1400;
+  var IMAGE_STORE_MAX_DIM = 1800;
+  var IMAGE_STORE_QUALITY = 0.9;
 
   var DB_NAME = "dailyJournalImages";
   var DB_STORE = "images";
@@ -1135,6 +1136,12 @@
     });
   }
 
+  function encodeCanvasDataURL(canvas, quality) {
+    var webp = canvas.toDataURL("image/webp", quality);
+    if (webp.indexOf("data:image/webp") === 0) return webp;
+    return canvas.toDataURL("image/jpeg", quality);
+  }
+
   function processImageFile(file) {
     return new Promise(function (resolve, reject) {
       var reader = new FileReader();
@@ -1150,7 +1157,7 @@
           canvas.height = h;
           var ctx = canvas.getContext("2d");
           ctx.drawImage(img, 0, 0, w, h);
-          resolve(canvas.toDataURL("image/jpeg", 0.85));
+          resolve(encodeCanvasDataURL(canvas, IMAGE_STORE_QUALITY));
         };
         img.onerror = function () {
           reject(new Error("image decode failed"));
@@ -1958,6 +1965,28 @@
     });
   }
 
+  var EXPORT_IMAGE_QUALITY = 0.92;
+
+  function encodePageCanvas(canvas) {
+    return new Promise(function (resolve) {
+      canvas.toBlob(function (webpBlob) {
+        if (webpBlob && webpBlob.type === "image/webp") {
+          resolve({ blob: webpBlob, ext: "webp" });
+          return;
+        }
+        canvas.toBlob(function (jpegBlob) {
+          if (jpegBlob && jpegBlob.type === "image/jpeg") {
+            resolve({ blob: jpegBlob, ext: "jpg" });
+            return;
+          }
+          canvas.toBlob(function (pngBlob) {
+            resolve({ blob: pngBlob, ext: "png" });
+          }, "image/png");
+        }, "image/jpeg", EXPORT_IMAGE_QUALITY);
+      }, "image/webp", EXPORT_IMAGE_QUALITY);
+    });
+  }
+
   function exportImages() {
     if (exportImagesBtn.disabled) return;
     var original = exportImagesBtn.textContent;
@@ -1974,13 +2003,9 @@
       exportImagesBtn.textContent = "جارٍ التصدير… " + (i + 1) + "/" + total;
       var svg = buildPageSVG(currentPages[i], i, total, currentFontSize);
       renderSVGToCanvas(svg, 2)
-        .then(function (canvas) {
-          return new Promise(function (resolve) {
-            canvas.toBlob(resolve, "image/png");
-          });
-        })
-        .then(function (blob) {
-          downloadBlob(blob, base + "-" + (i + 1) + "-of-" + total + ".png");
+        .then(encodePageCanvas)
+        .then(function (result) {
+          downloadBlob(result.blob, base + "-" + (i + 1) + "-of-" + total + "." + result.ext);
           return sleep(200);
         })
         .then(function () {
