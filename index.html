@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>يوميات</title>
+<title>كتابة</title>
 <meta name="description" content="مساحة شخصية بسيطة للكتابة اليومية" />
 <meta id="themeColorMeta" name="theme-color" content="#f6f1e7" />
 <style>
@@ -301,7 +301,7 @@
     background: transparent;
     color: var(--text);
     font-family: inherit;
-    font-size: 18px;
+    font-size: 22px;
     line-height: 1.9;
     padding: 2px;
     caret-color: var(--focus);
@@ -911,7 +911,7 @@
   <div class="topbar">
     <div class="font-stepper" role="group" aria-label="حجم خط الكتابة">
       <button id="editorFontDecrease" class="stepper-btn" type="button" aria-label="تصغير خط الكتابة">－</button>
-      <span id="editorFontSizeValue" class="stepper-value">18</span>
+      <span id="editorFontSizeValue" class="stepper-value">22</span>
       <button id="editorFontIncrease" class="stepper-btn" type="button" aria-label="تكبير خط الكتابة">＋</button>
     </div>
     <div class="topbar-group">
@@ -998,8 +998,8 @@
 
   <div class="export-controls">
     <label for="fontSizeRange" class="export-control-label">حجم الخط</label>
-    <input id="fontSizeRange" type="range" min="14" max="120" step="1" value="20" />
-    <span id="fontSizeValue" class="export-control-value">20</span>
+    <input id="fontSizeRange" type="range" min="14" max="120" step="1" value="50" />
+    <span id="fontSizeValue" class="export-control-value">50</span>
   </div>
 
   <div class="export-controls">
@@ -1077,7 +1077,7 @@
   var DARK_COLOR = "#1c1a17";
   var EDITOR_FONT_MIN = 14;
   var EDITOR_FONT_MAX = 64;
-  var EDITOR_FONT_DEFAULT = 18;
+  var EDITOR_FONT_DEFAULT = 22;
   var EDITOR_FONT_STEP = 2;
 
   var PAGE_W = 1000;
@@ -1255,7 +1255,7 @@
   var BG_KEY = "dailyJournal.exportBg";
   var SIGNATURE_KEY = "dailyJournal.signature";
   var currentSignature = "";
-  var currentFontSize = 20;
+  var currentFontSize = 50;
   var currentPages = [];
   var currentPageIndex = 0;
   var currentBgMode = "white";
@@ -1863,7 +1863,7 @@
 
   function openExport() {
     if (exportBtn.disabled) return;
-    currentFontSize = parseInt(fontSizeRange.value, 10) || 20;
+    currentFontSize = parseInt(fontSizeRange.value, 10) || 50;
     fontSizeValueEl.textContent = String(currentFontSize);
     setBgMode(getStoredBgMode() || "white");
     currentSignature = getStoredSignature();
@@ -2342,7 +2342,7 @@
   });
 
   fontSizeRange.addEventListener("input", function () {
-    currentFontSize = parseInt(fontSizeRange.value, 10) || 20;
+    currentFontSize = parseInt(fontSizeRange.value, 10) || 50;
     fontSizeValueEl.textContent = String(currentFontSize);
     recomputePagination();
     if (currentPageIndex >= currentPages.length) currentPageIndex = currentPages.length - 1;
