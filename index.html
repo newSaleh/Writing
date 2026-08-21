@@ -219,6 +219,7 @@
     line-height: 1.35;
     padding: 4px 2px;
     caret-color: var(--focus);
+    unicode-bidi: plaintext;
   }
 
   .title-input::placeholder {
@@ -287,6 +288,7 @@
     line-height: 1.9;
     padding: 2px;
     caret-color: var(--focus);
+    unicode-bidi: plaintext;
   }
 
   .editor::placeholder {
@@ -920,7 +922,7 @@
       id="title"
       class="title-input"
       type="text"
-      dir="rtl"
+      dir="auto"
       placeholder="عنوان اليوم…"
       autocomplete="off"
       autofocus
@@ -936,7 +938,7 @@
     <textarea
       id="editor"
       class="editor"
-      dir="rtl"
+      dir="auto"
       placeholder="ابدأ الكتابة هنا…"
       aria-label="مساحة الكتابة"
     ></textarea>
