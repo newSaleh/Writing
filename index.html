@@ -302,9 +302,10 @@
   .editor {
     flex: 1 1 auto;
     width: 100%;
+    min-height: 0;
+    overflow-y: auto;
     border: none;
     outline: none;
-    resize: none;
     background: transparent;
     color: var(--text);
     font-family: inherit;
@@ -312,12 +313,111 @@
     line-height: 1.9;
     padding: 2px;
     caret-color: var(--focus);
-    unicode-bidi: plaintext;
   }
 
-  .editor::placeholder {
+  .editor.is-empty::before {
+    content: attr(data-placeholder);
     color: var(--muted);
     opacity: 0.55;
+    pointer-events: none;
+  }
+
+  .editor-figure {
+    display: block;
+    margin: 20px auto;
+    text-align: center;
+    max-width: 100%;
+  }
+
+  .editor-figure img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 0 auto;
+    border-radius: 4px;
+  }
+
+  .editor-figure figcaption {
+    margin-top: 8px;
+    font-size: 0.85em;
+    opacity: 0.65;
+    text-align: center;
+  }
+
+  /* ---- Formatting toolbar ---- */
+
+  .format-toolbar {
+    position: fixed;
+    z-index: 15;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background: var(--bg);
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    padding: 5px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16);
+  }
+
+  .format-toolbar[hidden] {
+    display: none;
+  }
+
+  .format-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.95rem;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .format-btn:hover {
+    background: var(--border);
+  }
+
+  .format-btn[aria-pressed="true"] {
+    background: var(--ink-bg);
+    color: var(--ink-text);
+  }
+
+  .format-btn:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 1px;
+  }
+
+  .format-btn svg {
+    width: 17px;
+    height: 17px;
+  }
+
+  .format-glyph-b {
+    font-weight: 700;
+  }
+
+  .format-glyph-i {
+    font-style: italic;
+    font-weight: 600;
+  }
+
+  .format-glyph-u {
+    text-decoration: underline;
+    font-weight: 600;
+  }
+
+  .format-sep {
+    flex: 0 0 auto;
+    width: 1px;
+    height: 20px;
+    background: var(--border-strong);
+    margin: 0 3px;
   }
 
   .actions {
@@ -1202,14 +1302,33 @@
   </header>
 
   <main class="editor-wrap">
-    <textarea
+    <div
       id="editor"
       class="editor"
-      dir="auto"
-      placeholder="ابدأ الكتابة هنا…"
+      contenteditable="true"
+      dir="rtl"
+      data-placeholder="ابدأ الكتابة هنا…"
       aria-label="مساحة الكتابة"
-    ></textarea>
+      role="textbox"
+      aria-multiline="true"
+    ></div>
   </main>
+
+  <div id="formatToolbar" class="format-toolbar" hidden>
+    <button type="button" class="format-btn" data-cmd="bold" aria-pressed="false" aria-label="عريض"><span class="format-glyph-b">B</span></button>
+    <button type="button" class="format-btn" data-cmd="italic" aria-pressed="false" aria-label="مائل"><span class="format-glyph-i">I</span></button>
+    <button type="button" class="format-btn" data-cmd="underline" aria-pressed="false" aria-label="تسطير"><span class="format-glyph-u">U</span></button>
+    <span class="format-sep"></span>
+    <button type="button" class="format-btn" data-cmd="justifyRight" aria-pressed="false" aria-label="محاذاة يمين">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="20" y1="6" x2="4" y2="6" /><line x1="20" y1="12" x2="10" y2="12" /><line x1="20" y1="18" x2="6" y2="18" /></svg>
+    </button>
+    <button type="button" class="format-btn" data-cmd="justifyCenter" aria-pressed="false" aria-label="توسيط">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="20" y1="6" x2="4" y2="6" /><line x1="17" y1="12" x2="7" y2="12" /><line x1="19" y1="18" x2="5" y2="18" /></svg>
+    </button>
+    <button type="button" class="format-btn" data-cmd="justifyLeft" aria-pressed="false" aria-label="محاذاة يسار">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="20" y1="6" x2="4" y2="6" /><line x1="14" y1="12" x2="4" y2="12" /><line x1="18" y1="18" x2="4" y2="18" /></svg>
+    </button>
+  </div>
 
   <footer class="actions">
     <p id="wordCount" class="word-count" aria-live="polite">0 كلمة</p>
@@ -1477,6 +1596,8 @@
   var titleEl = document.getElementById("title");
   var dateEl = document.getElementById("date");
   var editorEl = document.getElementById("editor");
+  var formatToolbar = document.getElementById("formatToolbar");
+  var formatButtons = Array.prototype.slice.call(document.querySelectorAll(".format-btn"));
   var copyBtn = document.getElementById("copyBtn");
   var deleteBtn = document.getElementById("deleteBtn");
   var wordCountEl = document.getElementById("wordCount");
@@ -1541,8 +1662,7 @@
   var currentBgMode = "white";
   var currentImageMeta = {};
   var pendingImageDataUrl = null;
-  var pendingInsertionStart = 0;
-  var pendingInsertionEnd = 0;
+  var pendingRange = null;
   var points = [];
   var pointsPinned = false;
   var pointsPanelOpen = false;
@@ -1585,7 +1705,7 @@
       var data = {
         title: titleEl.value,
         date: dateEl.value,
-        text: editorEl.value,
+        html: editorEl.innerHTML,
         points: points
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -1595,7 +1715,7 @@
   }
 
   function countWords(text) {
-    var matches = stripImageMarkersToCaption(text).trim().match(/\S+/g);
+    var matches = text.trim().match(/\S+/g);
     return matches ? matches.length : 0;
   }
 
@@ -1608,110 +1728,109 @@
   }
 
   function updateWordCount() {
-    wordCountEl.textContent = formatWordCount(countWords(editorEl.value));
+    wordCountEl.textContent = formatWordCount(countWords(editorEl.textContent));
   }
 
   function updateExportAvailability() {
-    exportBtn.disabled = !(titleEl.value.trim() || editorEl.value.trim());
+    exportBtn.disabled = !(titleEl.value.trim() || editorEl.textContent.trim());
   }
 
-  var IMAGE_MARKER_RE = /!\[([^\]]*)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)/g;
   var IMAGE_SCALE_MIN = 0.4;
   var IMAGE_SCALE_MAX = 1.6;
   var IMAGE_SCALE_STEP = 0.2;
   var IMAGE_SCALE_DEFAULT = 1;
 
-  function stripImageMarkersToCaption(text) {
-    return text.replace(IMAGE_MARKER_RE, function (whole, caption) {
-      return caption;
-    });
+  function isImageFigure(node) {
+    return !!(node && node.nodeType === 1 && node.classList && node.classList.contains("editor-figure"));
   }
 
-  function stripImageMarkersForCopy(text) {
-    return text.replace(IMAGE_MARKER_RE, function (whole, caption) {
-      return caption ? "[صورة: " + caption + "]" : "[صورة]";
-    });
-  }
-
-  function collectImageIds(text) {
+  function collectImageIdsFromEditor() {
     var ids = [];
-    var re = new RegExp(IMAGE_MARKER_RE.source, "g");
-    var m;
-    while ((m = re.exec(text))) {
-      if (ids.indexOf(m[2]) === -1) ids.push(m[2]);
-    }
+    editorEl.querySelectorAll(".editor-figure[data-image-id]").forEach(function (fig) {
+      var id = fig.dataset.imageId;
+      if (id && ids.indexOf(id) === -1) ids.push(id);
+    });
     return ids;
   }
 
-  function parseContent(text) {
+  function buildSegmentsFromEditor() {
     var segments = [];
-    var re = new RegExp(IMAGE_MARKER_RE.source, "g");
-    var lastIndex = 0;
-    var m;
-    while ((m = re.exec(text))) {
-      if (m.index > lastIndex) {
-        segments.push({ type: "text", text: text.slice(lastIndex, m.index) });
+    var textBuffer = [];
+
+    function flushText() {
+      var text = textBuffer.join("\n");
+      if (text.length > 0) {
+        segments.push({ type: "text", text: text });
       }
-      var scale = IMAGE_SCALE_DEFAULT;
-      if (m[3]) {
-        var parsed = parseFloat(m[3]);
-        if (!isNaN(parsed) && parsed >= IMAGE_SCALE_MIN && parsed <= IMAGE_SCALE_MAX) scale = parsed;
+      textBuffer = [];
+    }
+
+    Array.prototype.forEach.call(editorEl.childNodes, function (node) {
+      if (isImageFigure(node)) {
+        flushText();
+        var scale = parseFloat(node.dataset.scale);
+        if (isNaN(scale) || scale < IMAGE_SCALE_MIN || scale > IMAGE_SCALE_MAX) scale = IMAGE_SCALE_DEFAULT;
+        segments.push({ type: "image", id: node.dataset.imageId, caption: node.dataset.caption || "", scale: scale });
+      } else if (node.nodeType === 1 && node.querySelector && node.querySelector(".editor-figure")) {
+        /* a wrapper div containing an image figure (our own insertion wrapper) */
+        Array.prototype.forEach.call(node.childNodes, function (inner) {
+          if (isImageFigure(inner)) {
+            flushText();
+            var s = parseFloat(inner.dataset.scale);
+            if (isNaN(s) || s < IMAGE_SCALE_MIN || s > IMAGE_SCALE_MAX) s = IMAGE_SCALE_DEFAULT;
+            segments.push({ type: "image", id: inner.dataset.imageId, caption: inner.dataset.caption || "", scale: s });
+          } else {
+            textBuffer.push(inner.textContent || "");
+          }
+        });
+      } else {
+        textBuffer.push(node.textContent || "");
       }
-      segments.push({ type: "image", caption: m[1], id: m[2], scale: scale });
-      lastIndex = re.lastIndex;
-    }
-    if (lastIndex < text.length) {
-      segments.push({ type: "text", text: text.slice(lastIndex) });
-    }
+    });
+    flushText();
     return segments;
   }
 
-  function getMarkerScale(text, id) {
-    var idPattern = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    var re = new RegExp('!\\[[^\\]]*\\]\\(' + idPattern + '(?:\\s+"([^"]*)")?\\)');
-    var m = re.exec(text);
-    if (m && m[1]) {
-      var v = parseFloat(m[1]);
-      if (!isNaN(v) && v >= IMAGE_SCALE_MIN && v <= IMAGE_SCALE_MAX) return v;
-    }
-    return IMAGE_SCALE_DEFAULT;
-  }
-
-  function setMarkerScale(text, id, scale) {
-    var idPattern = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    var re = new RegExp('(!\\[[^\\]]*\\]\\(' + idPattern + ')(?:\\s+"[^"]*")?(\\))');
-    return text.replace(re, function (whole, head, tail) {
-      if (Math.abs(scale - IMAGE_SCALE_DEFAULT) < 0.001) return head + tail;
-      return head + ' "' + scale.toFixed(2) + '"' + tail;
-    });
-  }
-
   function changeImageScale(id, delta) {
-    var current = getMarkerScale(editorEl.value, id);
+    var figure = editorEl.querySelector('.editor-figure[data-image-id="' + id + '"]');
+    if (!figure) return;
+    var current = parseFloat(figure.dataset.scale);
+    if (isNaN(current)) current = IMAGE_SCALE_DEFAULT;
     var next = Math.round(Math.max(IMAGE_SCALE_MIN, Math.min(IMAGE_SCALE_MAX, current + delta)) * 100) / 100;
-    editorEl.value = setMarkerScale(editorEl.value, id, next);
+    figure.dataset.scale = String(next);
     saveEntry();
     recomputePagination();
     if (currentPageIndex >= currentPages.length) currentPageIndex = currentPages.length - 1;
     renderCurrentPage();
   }
 
-  function insertMarkerAtSavedCursor(marker) {
-    var value = editorEl.value;
-    var start = pendingInsertionStart;
-    var end = pendingInsertionEnd;
-    var before = value.slice(0, start);
-    var after = value.slice(end);
-    var prefix = before.length === 0 ? "" : before.endsWith("\n\n") ? "" : before.endsWith("\n") ? "\n" : "\n\n";
-    var suffix = after.length === 0 ? "" : after.startsWith("\n\n") ? "" : after.startsWith("\n") ? "\n" : "\n\n";
-    var insertion = prefix + marker + suffix;
-    editorEl.value = before + insertion + after;
-    var cursorPos = (before + insertion).length;
-    editorEl.focus();
-    editorEl.setSelectionRange(cursorPos, cursorPos);
-    saveEntry();
-    updateWordCount();
-    updateExportAvailability();
+  function placeCaretAtStart(node) {
+    var range = document.createRange();
+    range.selectNodeContents(node);
+    range.collapse(true);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  function insertImageNode(dataUrl, caption) {
+    var id = "img_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
+    var figure = document.createElement("figure");
+    figure.className = "editor-figure";
+    figure.contentEditable = "false";
+    figure.dataset.imageId = id;
+    figure.dataset.caption = caption || "";
+    figure.dataset.scale = "1";
+    var img = document.createElement("img");
+    img.src = dataUrl;
+    img.alt = caption || "";
+    figure.appendChild(img);
+    if (caption) {
+      var cap = document.createElement("figcaption");
+      cap.textContent = caption;
+      figure.appendChild(cap);
+    }
+    return { id: id, figure: figure };
   }
 
   function openCaptionDialog() {
@@ -1740,18 +1859,76 @@
       closeCaptionDialog();
       return;
     }
-    var id = "img_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
-    var cleanCaption = (caption || "").replace(/[[\]\n]/g, " ").trim();
-    saveImageBlob(id, dataUrl)
-      .then(function () {
-        insertMarkerAtSavedCursor("![" + cleanCaption + "](" + id + ")");
-      })
-      .catch(function () {
-        window.alert("تعذّر حفظ الصورة. تأكد من توفر مساحة تخزين كافية في المتصفح.");
-      });
     captionDialog.hidden = true;
     document.removeEventListener("keydown", onCaptionDialogKeydown);
     pendingImageDataUrl = null;
+
+    var cleanCaption = (caption || "").trim();
+    var result = insertImageNode(dataUrl, cleanCaption);
+    saveImageBlob(result.id, dataUrl).catch(function () {
+      window.alert("تعذّر حفظ الصورة. تأكد من توفر مساحة تخزين كافية في المتصفح.");
+    });
+
+    editorEl.focus();
+    var sel = window.getSelection();
+    var range = pendingRange && editorEl.contains(pendingRange.commonAncestorContainer) ? pendingRange : null;
+    if (!range) {
+      range = document.createRange();
+      range.selectNodeContents(editorEl);
+      range.collapse(false);
+    }
+    sel.removeAllRanges();
+    sel.addRange(range);
+    var currentRange = sel.getRangeAt(0);
+    currentRange.deleteContents();
+    currentRange.collapse(true);
+
+    var wrapperDiv = document.createElement("div");
+    wrapperDiv.appendChild(result.figure);
+
+    var block = getBlockAncestor(currentRange.startContainer);
+    var afterDiv;
+    if (block && block !== editorEl) {
+      /* split the current paragraph so the image becomes its own top-level
+         sibling block, matching what buildSegmentsFromEditor() expects */
+      var afterRange = document.createRange();
+      afterRange.setStart(currentRange.startContainer, currentRange.startOffset);
+      afterRange.setEndAfter(block.lastChild);
+      var afterFragment = afterRange.extractContents();
+      afterDiv = document.createElement("div");
+      afterDiv.setAttribute("dir", block.getAttribute("dir") || "rtl");
+      afterDiv.appendChild(afterFragment);
+      if (afterDiv.textContent === "" && !afterDiv.querySelector(".editor-figure")) {
+        afterDiv.innerHTML = "";
+        afterDiv.appendChild(document.createElement("br"));
+      }
+      if (block.childNodes.length === 0) {
+        block.appendChild(document.createElement("br"));
+      }
+      if (block.nextSibling) {
+        block.parentNode.insertBefore(wrapperDiv, block.nextSibling);
+      } else {
+        block.parentNode.appendChild(wrapperDiv);
+      }
+      wrapperDiv.parentNode.insertBefore(afterDiv, wrapperDiv.nextSibling);
+    } else {
+      currentRange.insertNode(wrapperDiv);
+      afterDiv = document.createElement("div");
+      afterDiv.setAttribute("dir", "rtl");
+      afterDiv.appendChild(document.createElement("br"));
+      if (wrapperDiv.nextSibling) {
+        wrapperDiv.parentNode.insertBefore(afterDiv, wrapperDiv.nextSibling);
+      } else {
+        wrapperDiv.parentNode.appendChild(afterDiv);
+      }
+    }
+    placeCaretAtStart(afterDiv);
+
+    updateEditorEmptyState();
+    applyDirToAllParagraphs();
+    saveEntry();
+    updateWordCount();
+    updateExportAvailability();
   }
 
   function getStoredSignature() {
@@ -1880,9 +2057,9 @@
     return h + CAPTION_MARGIN_TOP;
   }
 
-  function paginateContent(fullText, titleText, fontSizePx, imageMeta) {
+  function paginateContent(titleText, fontSizePx, imageMeta) {
     configureMeasureBox(fontSizePx);
-    var segments = parseContent(fullText);
+    var segments = buildSegmentsFromEditor();
     var titleHeight = titleText ? measureTitleHeight(titleText, fontSizePx) : 0;
     var minLine = fontSizePx * BODY_LINE_HEIGHT;
 
@@ -1944,10 +2121,6 @@
     return pages;
   }
 
-  function collectImageIdsFromEditor() {
-    return collectImageIds(editorEl.value);
-  }
-
   function loadImageMeta(ids) {
     if (ids.length === 0) return Promise.resolve({});
     return Promise.all(
@@ -1980,7 +2153,7 @@
   }
 
   function recomputePagination() {
-    currentPages = paginateContent(editorEl.value, titleEl.value.trim(), currentFontSize, currentImageMeta);
+    currentPages = paginateContent(titleEl.value.trim(), currentFontSize, currentImageMeta);
   }
 
   function updatePreviewScale() {
@@ -2566,17 +2739,234 @@
     updatePointsVisibility();
   }
 
+  function detectDir(text) {
+    var m = text.match(/[A-Za-z֐-׿؀-ۿ]/);
+    if (!m) return "rtl";
+    return /[A-Za-z]/.test(m[0]) ? "ltr" : "rtl";
+  }
+
+  function getBlockAncestor(node) {
+    if (!node) return null;
+    if (node.nodeType === 3) node = node.parentNode;
+    while (node && node.parentNode !== editorEl && node !== editorEl) {
+      node = node.parentNode;
+    }
+    return node;
+  }
+
+  function updateParagraphDirs() {
+    var sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return;
+    var node = sel.getRangeAt(0).startContainer;
+    if (!editorEl.contains(node)) return;
+    var block = getBlockAncestor(node);
+    var target = block === editorEl ? editorEl : block;
+    if (target && target.nodeType === 1) {
+      var dir = detectDir(target.textContent || "");
+      if (target.getAttribute("dir") !== dir) target.setAttribute("dir", dir);
+    }
+  }
+
+  function applyDirToAllParagraphs() {
+    Array.prototype.forEach.call(editorEl.children, function (child) {
+      if (isImageFigure(child)) return;
+      child.setAttribute("dir", detectDir(child.textContent || ""));
+    });
+  }
+
+  function updateEditorEmptyState() {
+    var isEmpty = editorEl.textContent.trim() === "" && !editorEl.querySelector(".editor-figure");
+    editorEl.classList.toggle("is-empty", isEmpty);
+  }
+
+  function ensureEditorSeeded() {
+    if (editorEl.childNodes.length === 0) {
+      var div = document.createElement("div");
+      div.setAttribute("dir", "rtl");
+      div.appendChild(document.createElement("br"));
+      editorEl.appendChild(div);
+      placeCaretAtStart(div);
+    }
+  }
+
+  function hideFormatToolbar() {
+    formatToolbar.hidden = true;
+  }
+
+  function updateFormatButtonStates() {
+    formatButtons.forEach(function (btn) {
+      var pressed = false;
+      try {
+        pressed = document.queryCommandState(btn.dataset.cmd);
+      } catch (e) {
+        /* ignore */
+      }
+      btn.setAttribute("aria-pressed", pressed ? "true" : "false");
+    });
+  }
+
+  function showFormatToolbarAt(rect) {
+    formatToolbar.hidden = false;
+    var tbRect = formatToolbar.getBoundingClientRect();
+    var top = rect.top - tbRect.height - 8;
+    if (top < 8) top = rect.bottom + 8;
+    var left = rect.left + rect.width / 2 - tbRect.width / 2;
+    var maxLeft = window.innerWidth - tbRect.width - 8;
+    left = Math.max(8, Math.min(left, maxLeft));
+    formatToolbar.style.top = top + "px";
+    formatToolbar.style.left = left + "px";
+  }
+
+  function updateFormatToolbar() {
+    var sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
+      hideFormatToolbar();
+      return;
+    }
+    var range = sel.getRangeAt(0);
+    if (!editorEl.contains(range.commonAncestorContainer)) {
+      hideFormatToolbar();
+      return;
+    }
+    var rect = range.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) {
+      hideFormatToolbar();
+      return;
+    }
+    showFormatToolbarAt(rect);
+    updateFormatButtonStates();
+  }
+
+  function editorToPlainText() {
+    var parts = [];
+    Array.prototype.forEach.call(editorEl.childNodes, function (node) {
+      if (isImageFigure(node)) {
+        var cap = node.dataset.caption;
+        parts.push(cap ? "[صورة: " + cap + "]" : "[صورة]");
+      } else if (node.nodeType === 1 && node.querySelector && node.querySelector(".editor-figure")) {
+        Array.prototype.forEach.call(node.childNodes, function (inner) {
+          if (isImageFigure(inner)) {
+            var c = inner.dataset.caption;
+            parts.push(c ? "[صورة: " + c + "]" : "[صورة]");
+          } else {
+            parts.push(inner.textContent || "");
+          }
+        });
+      } else {
+        parts.push(node.textContent || "");
+      }
+    });
+    return parts.join("\n");
+  }
+
+  function editorToRichHTML() {
+    var parts = [];
+    Array.prototype.forEach.call(editorEl.childNodes, function (node) {
+      if (isImageFigure(node)) {
+        var cap = node.dataset.caption;
+        parts.push("<div>" + (cap ? "[صورة: " + escapeHtml(cap) + "]" : "[صورة]") + "</div>");
+      } else if (node.nodeType === 1 && node.querySelector && node.querySelector(".editor-figure")) {
+        Array.prototype.forEach.call(node.childNodes, function (inner) {
+          if (isImageFigure(inner)) {
+            var c = inner.dataset.caption;
+            parts.push("<div>" + (c ? "[صورة: " + escapeHtml(c) + "]" : "[صورة]") + "</div>");
+          } else {
+            parts.push(paragraphToHTML(inner));
+          }
+        });
+      } else if (node.nodeType === 1) {
+        parts.push(paragraphToHTML(node));
+      } else {
+        parts.push("<div>" + escapeHtml(node.textContent || "") + "</div>");
+      }
+    });
+    return parts.join("");
+  }
+
+  function paragraphToHTML(node) {
+    var align = node.style && node.style.textAlign ? ' style="text-align:' + node.style.textAlign + ';"' : "";
+    return "<div" + align + ">" + (node.innerHTML || "&nbsp;") + "</div>";
+  }
+
+  var LEGACY_IMAGE_MARKER_RE = /!\[([^\]]*)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)/g;
+
+  function migrateLegacyText(text) {
+    var container = document.createElement("div");
+    var re = new RegExp(LEGACY_IMAGE_MARKER_RE.source, "g");
+    var lastIndex = 0;
+    var m;
+
+    function flushTextAsDivs(str) {
+      str.split("\n").forEach(function (line) {
+        var div = document.createElement("div");
+        if (line.length === 0) {
+          div.appendChild(document.createElement("br"));
+        } else {
+          div.textContent = line;
+        }
+        container.appendChild(div);
+      });
+    }
+
+    while ((m = re.exec(text))) {
+      if (m.index > lastIndex) flushTextAsDivs(text.slice(lastIndex, m.index));
+      var caption = m[1];
+      var id = m[2];
+      var figure = document.createElement("figure");
+      figure.className = "editor-figure";
+      figure.contentEditable = "false";
+      figure.dataset.imageId = id;
+      figure.dataset.caption = caption || "";
+      figure.dataset.scale = "1";
+      var img = document.createElement("img");
+      img.dataset.pendingImageId = id;
+      img.alt = caption || "";
+      figure.appendChild(img);
+      if (caption) {
+        var cap = document.createElement("figcaption");
+        cap.textContent = caption;
+        figure.appendChild(cap);
+      }
+      var wrapperDiv = document.createElement("div");
+      wrapperDiv.appendChild(figure);
+      container.appendChild(wrapperDiv);
+      lastIndex = re.lastIndex;
+    }
+    if (lastIndex < text.length) flushTextAsDivs(text.slice(lastIndex));
+    return container.innerHTML;
+  }
+
+  function hydratePendingImages() {
+    var pendingImgs = editorEl.querySelectorAll("img[data-pending-image-id]");
+    pendingImgs.forEach(function (img) {
+      var id = img.dataset.pendingImageId;
+      loadImageBlob(id).then(function (dataUrl) {
+        if (dataUrl) img.src = dataUrl;
+        img.removeAttribute("data-pending-image-id");
+      });
+    });
+  }
+
   function init() {
     var saved = loadEntry();
     if (saved) {
       titleEl.value = saved.title || "";
-      editorEl.value = saved.text || "";
+      if (typeof saved.html === "string") {
+        editorEl.innerHTML = saved.html;
+      } else if (saved.text) {
+        editorEl.innerHTML = migrateLegacyText(saved.text);
+        hydratePendingImages();
+      } else {
+        editorEl.innerHTML = "";
+      }
+      applyDirToAllParagraphs();
       dateEl.value = saved.date || todayISO();
       points = Array.isArray(saved.points) ? saved.points : [];
     } else {
       dateEl.value = todayISO();
       points = [];
     }
+    updateEditorEmptyState();
     renderPoints();
     updateWordCount();
     pointsPinned = getStoredPointsPinned();
@@ -2586,7 +2976,7 @@
   function buildCopyText() {
     var title = titleEl.value.trim();
     var dateLabel = formatArabicDate(dateEl.value || todayISO());
-    var text = stripImageMarkersForCopy(editorEl.value);
+    var text = editorToPlainText();
     var lines = [];
     if (title) {
       lines.push(title, "");
@@ -2594,6 +2984,35 @@
     lines.push(dateLabel, "", "");
     lines.push(text);
     return lines.join("\n");
+  }
+
+  function buildCopyHTML() {
+    var title = titleEl.value.trim();
+    var dateLabel = formatArabicDate(dateEl.value || todayISO());
+    var titleHTML = title ? '<div style="font-weight:700;font-size:1.3em;margin-bottom:6px;">' + escapeHtml(title) + "</div>" : "";
+    return (
+      '<div dir="rtl" style="font-family:-apple-system,sans-serif;white-space:pre-wrap;">' +
+      titleHTML +
+      '<div style="margin-bottom:18px;">' + escapeHtml(dateLabel) + "</div>" +
+      editorToRichHTML() +
+      "</div>"
+    );
+  }
+
+  function copyEntry() {
+    var plainText = buildCopyText();
+    if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+      var html = buildCopyHTML();
+      var item = new ClipboardItem({
+        "text/plain": new Blob([plainText], { type: "text/plain" }),
+        "text/html": new Blob([html], { type: "text/html" })
+      });
+      navigator.clipboard.write([item]).then(showCopyFeedback).catch(function () {
+        copyToClipboard(plainText);
+      });
+    } else {
+      copyToClipboard(plainText);
+    }
   }
 
   function showCopyFeedback() {
@@ -2654,11 +3073,12 @@
   }
 
   function performDelete() {
-    collectImageIds(editorEl.value).forEach(function (id) {
+    collectImageIdsFromEditor().forEach(function (id) {
       deleteImageBlob(id);
     });
     titleEl.value = "";
-    editorEl.value = "";
+    editorEl.innerHTML = "";
+    updateEditorEmptyState();
     dateEl.value = todayISO();
     points = [];
     renderPoints();
@@ -2679,14 +3099,33 @@
   });
   dateEl.addEventListener("change", saveEntry);
   editorEl.addEventListener("input", function () {
+    updateParagraphDirs();
+    updateEditorEmptyState();
     saveEntry();
     updateWordCount();
     updateExportAvailability();
   });
+  editorEl.addEventListener("focus", ensureEditorSeeded);
 
-  copyBtn.addEventListener("click", function () {
-    copyToClipboard(buildCopyText());
+  document.addEventListener("selectionchange", function () {
+    updateFormatToolbar();
   });
+
+  formatToolbar.addEventListener("mousedown", function (e) {
+    e.preventDefault();
+  });
+
+  formatButtons.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      document.execCommand(btn.dataset.cmd, false, null);
+      editorEl.focus();
+      updateFormatButtonStates();
+      updateParagraphDirs();
+      saveEntry();
+    });
+  });
+
+  copyBtn.addEventListener("click", copyEntry);
 
   deleteBtn.addEventListener("click", openDialog);
   cancelDeleteBtn.addEventListener("click", closeDialog);
@@ -2726,8 +3165,8 @@
   });
 
   insertImageBtn.addEventListener("click", function () {
-    pendingInsertionStart = editorEl.selectionStart;
-    pendingInsertionEnd = editorEl.selectionEnd;
+    var sel = window.getSelection();
+    pendingRange = sel.rangeCount && editorEl.contains(sel.getRangeAt(0).commonAncestorContainer) ? sel.getRangeAt(0).cloneRange() : null;
     imageFileInput.value = "";
     imageFileInput.click();
   });
@@ -2795,6 +3234,12 @@
   });
 
   exportImagesBtn.addEventListener("click", exportImages);
+
+  try {
+    document.execCommand("defaultParagraphSeparator", false, "div");
+  } catch (e) {
+    /* ignore */
+  }
 
   initTheme();
   applyEditorFontSize(getStoredEditorFontSize());
