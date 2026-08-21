@@ -420,6 +420,29 @@
     margin: 0 3px;
   }
 
+  .format-font-select {
+    flex: 0 0 auto;
+    height: 34px;
+    max-width: 84px;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.8rem;
+    padding: 0 4px;
+    cursor: pointer;
+  }
+
+  .format-font-select:hover {
+    background: var(--border);
+  }
+
+  .format-font-select:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 1px;
+  }
+
   .actions {
     flex: 0 0 auto;
     display: flex;
@@ -624,6 +647,10 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  .icon-btn[hidden] {
+    display: none;
+  }
+
   .icon-btn:hover {
     background: var(--border);
     color: var(--text);
@@ -788,7 +815,7 @@
   .export-page-title {
     display: inline-block;
     max-width: 100%;
-    margin: 0 0 40px 0;
+    margin: 0 0 16px 0;
     padding-bottom: 14px;
     border-bottom: 3px solid currentColor;
     font-weight: 700;
@@ -800,6 +827,18 @@
     margin: 0;
     padding: 0;
     border: none;
+  }
+
+  .export-page-date {
+    margin: 0 0 36px 0;
+    font-size: 22px;
+    line-height: 1.4;
+    opacity: 0.6;
+  }
+
+  .export-page-date:empty {
+    display: none;
+    margin: 0;
   }
 
   .export-page-body {
@@ -952,6 +991,14 @@
     border-bottom: 3px solid #9c3b35;
   }
 
+  .measure-date {
+    display: inline-block;
+    width: auto;
+    white-space: normal;
+    font-size: 22px;
+    line-height: 1.4;
+  }
+
   .print-pages {
     display: none;
   }
@@ -1002,44 +1049,6 @@
   }
 
   /* ---- Writing points panel ---- */
-
-  .points-toggle-btn {
-    position: fixed;
-    top: calc(env(safe-area-inset-top, 0px) + 16px);
-    left: max(16px, env(safe-area-inset-left, 0px));
-    z-index: 25;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    padding: 0;
-    border: 1px solid var(--border-strong);
-    border-radius: 12px;
-    background: var(--bg);
-    color: var(--muted);
-    cursor: pointer;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .points-toggle-btn:hover {
-    color: var(--text);
-  }
-
-  .points-toggle-btn:focus-visible {
-    outline: 2px solid var(--focus);
-    outline-offset: 2px;
-  }
-
-  .points-toggle-btn svg {
-    width: 20px;
-    height: 20px;
-  }
-
-  .points-toggle-btn[hidden] {
-    display: none;
-  }
 
   .points-backdrop {
     position: fixed;
@@ -1237,6 +1246,28 @@
     .export-title-label {
       display: none;
     }
+
+    .format-toolbar {
+      gap: 0;
+      padding: 4px;
+      max-width: calc(100vw - 16px);
+    }
+
+    .format-btn {
+      width: 30px;
+      height: 30px;
+    }
+
+    .format-font-select {
+      height: 30px;
+      max-width: 56px;
+      font-size: 0.72rem;
+      padding: 0 2px;
+    }
+
+    .format-sep {
+      margin: 0 1px;
+    }
   }
 </style>
 </head>
@@ -1282,6 +1313,13 @@
           <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z" />
         </svg>
       </button>
+      <button id="pointsToggleBtn" class="icon-btn" type="button" aria-label="فتح رؤوس الأقلام">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="4" y="5" width="16" height="3" rx="1" />
+          <rect x="4" y="10.5" width="16" height="3" rx="1" />
+          <rect x="4" y="16" width="16" height="3" rx="1" />
+        </svg>
+      </button>
     </div>
   </div>
   <header class="entry-header">
@@ -1318,6 +1356,12 @@
     <button type="button" class="format-btn" data-cmd="bold" aria-pressed="false" aria-label="عريض"><span class="format-glyph-b">B</span></button>
     <button type="button" class="format-btn" data-cmd="italic" aria-pressed="false" aria-label="مائل"><span class="format-glyph-i">I</span></button>
     <button type="button" class="format-btn" data-cmd="underline" aria-pressed="false" aria-label="تسطير"><span class="format-glyph-u">U</span></button>
+    <span class="format-sep"></span>
+    <select id="fontFamilySelect" class="format-font-select" aria-label="نوع الخط">
+      <option value="default">افتراضي</option>
+      <option value="serif">مقروء</option>
+      <option value="mono">ثابت</option>
+    </select>
     <span class="format-sep"></span>
     <button type="button" class="format-btn" data-cmd="justifyRight" aria-pressed="false" aria-label="محاذاة يمين">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="20" y1="6" x2="4" y2="6" /><line x1="20" y1="12" x2="10" y2="12" /><line x1="20" y1="18" x2="6" y2="18" /></svg>
@@ -1367,14 +1411,6 @@
 
 <div id="pointsBackdrop" class="points-backdrop" hidden></div>
 
-<button id="pointsToggleBtn" class="points-toggle-btn" type="button" aria-label="فتح رؤوس الأقلام">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-    <rect x="4" y="5" width="16" height="3" rx="1" />
-    <rect x="4" y="10.5" width="16" height="3" rx="1" />
-    <rect x="4" y="16" width="16" height="3" rx="1" />
-  </svg>
-</button>
-
 <div id="exportOverlay" class="export-overlay" hidden role="dialog" aria-modal="true" aria-label="معاينة التصدير">
   <div class="export-topbar">
     <button id="exportClose" class="icon-btn" type="button" aria-label="إغلاق المعاينة">
@@ -1387,9 +1423,18 @@
   </div>
 
   <div class="export-controls">
-    <label for="fontSizeRange" class="export-control-label">حجم الخط</label>
+    <label for="fontSizeRange" class="export-control-label">حجم النص</label>
     <input id="fontSizeRange" type="range" min="14" max="120" step="1" value="50" />
     <span id="fontSizeValue" class="export-control-value">50</span>
+  </div>
+
+  <div class="export-controls">
+    <span class="export-control-label">حجم العنوان</span>
+    <div class="font-stepper">
+      <button id="titleFontDecrease" class="stepper-btn" type="button" aria-label="تصغير خط العنوان">－</button>
+      <span id="titleFontSizeValue" class="stepper-value">68</span>
+      <button id="titleFontIncrease" class="stepper-btn" type="button" aria-label="تكبير خط العنوان">＋</button>
+    </div>
   </div>
 
   <div class="export-controls">
@@ -1413,6 +1458,7 @@
       <div id="exportPageViewport" class="export-page-viewport">
         <div id="exportPage" class="export-page">
           <h2 id="exportPageTitle" class="export-page-title"></h2>
+          <div id="exportPageDate" class="export-page-date"></div>
           <div id="exportPageBody" class="export-page-body" dir="auto"></div>
           <div id="exportPageFooter" class="export-page-footer"></div>
           <div id="exportPageSignature" class="export-page-signature"></div>
@@ -1432,6 +1478,7 @@
 <div id="printPages" class="print-pages" aria-hidden="true"></div>
 <div id="measureBox" class="measure-box" aria-hidden="true"></div>
 <div id="titleMeasureBox" class="measure-box measure-title" aria-hidden="true"></div>
+<div id="dateMeasureBox" class="measure-box measure-date" aria-hidden="true"></div>
 
 <div id="confirmDialog" class="dialog-overlay" hidden>
   <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dialogText">
@@ -1480,7 +1527,11 @@
   var CONTENT_HEIGHT_MAX = PAGE_H - PAGE_PAD_TOP - PAGE_PAD_BOTTOM;
   var BODY_LINE_HEIGHT = 1.8;
   var TITLE_FONT_RATIO = 1.35;
-  var TITLE_MARGIN_BELOW = 40;
+  var TITLE_FONT_MAX = 160;
+  var TITLE_FONT_STEP = 2;
+  var TITLE_MARGIN_BELOW = 16;
+  var DATE_FONT_SIZE = 22;
+  var DATE_MARGIN_BELOW = 36;
   var IMAGE_MAX_DISPLAY_HEIGHT = 520;
   var IMAGE_MARGIN_TOP = 36;
   var IMAGE_MARGIN_BOTTOM = 36;
@@ -1598,6 +1649,14 @@
   var editorEl = document.getElementById("editor");
   var formatToolbar = document.getElementById("formatToolbar");
   var formatButtons = Array.prototype.slice.call(document.querySelectorAll(".format-btn"));
+  var fontFamilySelect = document.getElementById("fontFamilySelect");
+  var savedFormatRange = null;
+
+  var FONT_STACKS = {
+    "default": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Naskh Arabic', 'Noto Sans Arabic', 'Helvetica Neue', Arial, sans-serif",
+    "serif": "serif",
+    "mono": "monospace"
+  };
   var copyBtn = document.getElementById("copyBtn");
   var deleteBtn = document.getElementById("deleteBtn");
   var wordCountEl = document.getElementById("wordCount");
@@ -1634,6 +1693,9 @@
   var exportPageIndicatorEl = document.getElementById("exportPageIndicator");
   var fontSizeRange = document.getElementById("fontSizeRange");
   var fontSizeValueEl = document.getElementById("fontSizeValue");
+  var titleFontDecreaseBtn = document.getElementById("titleFontDecrease");
+  var titleFontIncreaseBtn = document.getElementById("titleFontIncrease");
+  var titleFontSizeValueEl = document.getElementById("titleFontSizeValue");
   var bgWhiteBtn = document.getElementById("bgWhiteBtn");
   var bgBlackBtn = document.getElementById("bgBlackBtn");
   var imageSizeControlsEl = document.getElementById("imageSizeControls");
@@ -1641,6 +1703,7 @@
   var exportPageViewportEl = document.getElementById("exportPageViewport");
   var exportPageEl = document.getElementById("exportPage");
   var exportPageTitleEl = document.getElementById("exportPageTitle");
+  var exportPageDateEl = document.getElementById("exportPageDate");
   var exportPageBodyEl = document.getElementById("exportPageBody");
   var exportPageFooterEl = document.getElementById("exportPageFooter");
   var exportPageSignatureEl = document.getElementById("exportPageSignature");
@@ -1652,11 +1715,14 @@
   var printPagesEl = document.getElementById("printPages");
   var measureBox = document.getElementById("measureBox");
   var titleMeasureBox = document.getElementById("titleMeasureBox");
+  var dateMeasureBox = document.getElementById("dateMeasureBox");
 
   var BG_KEY = "dailyJournal.exportBg";
   var SIGNATURE_KEY = "dailyJournal.signature";
+  var TITLE_FONT_KEY = "dailyJournal.exportTitleFontSize";
   var currentSignature = "";
   var currentFontSize = 50;
+  var currentTitleFontSize = 68;
   var currentPages = [];
   var currentPageIndex = 0;
   var currentBgMode = "white";
@@ -1753,42 +1819,96 @@
     return ids;
   }
 
-  function buildSegmentsFromEditor() {
-    var segments = [];
-    var textBuffer = [];
+  function normalizeScale(raw) {
+    var scale = parseFloat(raw);
+    if (isNaN(scale) || scale < IMAGE_SCALE_MIN || scale > IMAGE_SCALE_MAX) scale = IMAGE_SCALE_DEFAULT;
+    return scale;
+  }
 
-    function flushText() {
-      var text = textBuffer.join("\n");
-      if (text.length > 0) {
-        segments.push({ type: "text", text: text });
+  function runsFromParagraphNode(div) {
+    var runs = [];
+    function walk(node, fmt) {
+      if (node.nodeType === 3) {
+        if (node.nodeValue) runs.push({ text: node.nodeValue, bold: fmt.bold, italic: fmt.italic, underline: fmt.underline, font: fmt.font });
+        return;
       }
-      textBuffer = [];
+      if (node.nodeType !== 1) return;
+      if (node.tagName === "BR") {
+        runs.push({ text: "\n", bold: fmt.bold, italic: fmt.italic, underline: fmt.underline, font: fmt.font });
+        return;
+      }
+      var weight = node.style && node.style.fontWeight;
+      var decoration = node.style && (node.style.textDecorationLine || node.style.textDecoration);
+      var face = node.tagName === "FONT" ? node.getAttribute("face") : node.style && node.style.fontFamily;
+      var next = {
+        bold: fmt.bold || node.tagName === "B" || node.tagName === "STRONG" || weight === "bold" || weight === "700" || (parseInt(weight, 10) >= 600),
+        italic: fmt.italic || node.tagName === "I" || node.tagName === "EM",
+        underline: fmt.underline || node.tagName === "U" || (decoration && decoration.indexOf("underline") !== -1),
+        font: face || fmt.font
+      };
+      Array.prototype.forEach.call(node.childNodes, function (child) {
+        walk(child, next);
+      });
     }
+    walk(div, { bold: false, italic: false, underline: false, font: "" });
+    return runs;
+  }
 
+  function paragraphFromNode(div) {
+    var runs = runsFromParagraphNode(div);
+    var text = runs.map(function (r) { return r.text; }).join("");
+    return {
+      type: "text",
+      dir: div.getAttribute("dir") || "rtl",
+      align: (div.style && div.style.textAlign) || "",
+      runs: runs,
+      text: text
+    };
+  }
+
+  function buildRichParagraphs() {
+    var paragraphs = [];
     Array.prototype.forEach.call(editorEl.childNodes, function (node) {
       if (isImageFigure(node)) {
-        flushText();
-        var scale = parseFloat(node.dataset.scale);
-        if (isNaN(scale) || scale < IMAGE_SCALE_MIN || scale > IMAGE_SCALE_MAX) scale = IMAGE_SCALE_DEFAULT;
-        segments.push({ type: "image", id: node.dataset.imageId, caption: node.dataset.caption || "", scale: scale });
+        paragraphs.push({ type: "image", id: node.dataset.imageId, caption: node.dataset.caption || "", scale: normalizeScale(node.dataset.scale) });
       } else if (node.nodeType === 1 && node.querySelector && node.querySelector(".editor-figure")) {
         /* a wrapper div containing an image figure (our own insertion wrapper) */
         Array.prototype.forEach.call(node.childNodes, function (inner) {
           if (isImageFigure(inner)) {
-            flushText();
-            var s = parseFloat(inner.dataset.scale);
-            if (isNaN(s) || s < IMAGE_SCALE_MIN || s > IMAGE_SCALE_MAX) s = IMAGE_SCALE_DEFAULT;
-            segments.push({ type: "image", id: inner.dataset.imageId, caption: inner.dataset.caption || "", scale: s });
-          } else {
-            textBuffer.push(inner.textContent || "");
+            paragraphs.push({ type: "image", id: inner.dataset.imageId, caption: inner.dataset.caption || "", scale: normalizeScale(inner.dataset.scale) });
+          } else if (inner.nodeType === 1) {
+            paragraphs.push(paragraphFromNode(inner));
           }
         });
-      } else {
-        textBuffer.push(node.textContent || "");
+      } else if (node.nodeType === 1) {
+        paragraphs.push(paragraphFromNode(node));
       }
     });
-    flushText();
-    return segments;
+    return paragraphs;
+  }
+
+  function sliceRunsHTML(runs, start, end) {
+    if (end <= start) return "";
+    var html = "";
+    var offset = 0;
+    for (var i = 0; i < runs.length; i++) {
+      var run = runs[i];
+      var runStart = offset;
+      var runEnd = offset + run.text.length;
+      offset = runEnd;
+      if (runEnd <= start || runStart >= end) continue;
+      var sliceStart = Math.max(start, runStart) - runStart;
+      var sliceEnd = Math.min(end, runEnd) - runStart;
+      var piece = run.text.slice(sliceStart, sliceEnd);
+      if (piece === "") continue;
+      piece = escapeHtml(piece).replace(/\n/g, "<br>");
+      if (run.bold) piece = "<b>" + piece + "</b>";
+      if (run.italic) piece = "<i>" + piece + "</i>";
+      if (run.underline) piece = "<u>" + piece + "</u>";
+      if (run.font) piece = '<span style="font-family:' + run.font.replace(/"/g, "'") + ';">' + piece + "</span>";
+      html += piece;
+    }
+    return html;
   }
 
   function changeImageScale(id, delta) {
@@ -1947,6 +2067,35 @@
     }
   }
 
+  function getStoredTitleFontSize() {
+    try {
+      var v = parseInt(localStorage.getItem(TITLE_FONT_KEY), 10);
+      return isNaN(v) ? null : v;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveTitleFontSize(value) {
+    try {
+      localStorage.setItem(TITLE_FONT_KEY, String(value));
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  function resolveTitleFontSize(bodyFontSize) {
+    var stored = getStoredTitleFontSize();
+    var base = stored === null ? Math.round(bodyFontSize * TITLE_FONT_RATIO) : stored;
+    return Math.min(TITLE_FONT_MAX, Math.max(base, bodyFontSize));
+  }
+
+  function updateTitleFontStepperUI() {
+    titleFontSizeValueEl.textContent = String(currentTitleFontSize);
+    titleFontDecreaseBtn.disabled = currentTitleFontSize <= currentFontSize;
+    titleFontIncreaseBtn.disabled = currentTitleFontSize >= TITLE_FONT_MAX;
+  }
+
   function getStoredBgMode() {
     try {
       var v = localStorage.getItem(BG_KEY);
@@ -1993,19 +2142,29 @@
     measureBox.style.lineHeight = String(BODY_LINE_HEIGHT);
   }
 
-  function measureHeight(str) {
-    measureBox.textContent = str;
+  function measureHeight(html) {
+    measureBox.innerHTML = html;
     return measureBox.offsetHeight;
   }
 
-  function measureTitleHeight(text, fontSizePx) {
+  function measureTextHeight(str) {
+    return measureHeight(escapeHtml(str));
+  }
+
+  function measureTitleHeight(text, titleFontSizePx) {
     titleMeasureBox.style.width = CONTENT_WIDTH + "px";
-    titleMeasureBox.style.fontSize = Math.round(fontSizePx * TITLE_FONT_RATIO) + "px";
+    titleMeasureBox.style.fontSize = titleFontSizePx + "px";
     titleMeasureBox.textContent = text;
     return titleMeasureBox.offsetHeight + TITLE_MARGIN_BELOW;
   }
 
-  function findCut(text, startIdx, breakpoints, maxHeight) {
+  function measureDateHeight(text) {
+    dateMeasureBox.style.width = CONTENT_WIDTH + "px";
+    dateMeasureBox.textContent = text;
+    return dateMeasureBox.offsetHeight + DATE_MARGIN_BELOW;
+  }
+
+  function findCutRich(text, runs, startIdx, breakpoints, maxHeight) {
     var lo = 0, hi = breakpoints.length - 1;
     while (lo < hi) {
       var mid = (lo + hi) >> 1;
@@ -2017,7 +2176,7 @@
     while (bLo <= bHi) {
       var m = (bLo + bHi) >> 1;
       var candidate = breakpoints[m];
-      var h = measureHeight(text.slice(startIdx, candidate));
+      var h = measureHeight(sliceRunsHTML(runs, startIdx, candidate));
       if (h <= maxHeight) {
         best = candidate;
         bLo = m + 1;
@@ -2052,15 +2211,17 @@
     measureBox.style.width = displayWidth + "px";
     measureBox.style.fontSize = Math.round(fontSizePx * CAPTION_FONT_RATIO) + "px";
     measureBox.style.lineHeight = "1.5";
-    var h = measureHeight(caption);
+    var h = measureTextHeight(caption);
     configureMeasureBox(fontSizePx);
     return h + CAPTION_MARGIN_TOP;
   }
 
-  function paginateContent(titleText, fontSizePx, imageMeta) {
+  function paginateContent(titleText, dateText, fontSizePx, titleFontSizePx, imageMeta) {
     configureMeasureBox(fontSizePx);
-    var segments = buildSegmentsFromEditor();
-    var titleHeight = titleText ? measureTitleHeight(titleText, fontSizePx) : 0;
+    var paragraphs = buildRichParagraphs();
+    var headerHeight = 0;
+    if (titleText) headerHeight += measureTitleHeight(titleText, titleFontSizePx);
+    if (dateText) headerHeight += measureDateHeight(dateText);
     var minLine = fontSizePx * BODY_LINE_HEIGHT;
 
     var pages = [];
@@ -2068,19 +2229,29 @@
     var curHeight = 0;
 
     function pageAvailable() {
-      return CONTENT_HEIGHT_MAX - (pages.length === 0 ? titleHeight : 0);
+      return CONTENT_HEIGHT_MAX - (pages.length === 0 ? headerHeight : 0);
     }
 
     function pushPage() {
-      pages.push({ title: pages.length === 0 ? titleText || null : null, items: curItems });
+      pages.push({
+        title: pages.length === 0 ? titleText || null : null,
+        date: pages.length === 0 ? dateText || null : null,
+        items: curItems
+      });
       curItems = [];
       curHeight = 0;
     }
 
-    segments.forEach(function (seg) {
-      if (seg.type === "text") {
-        var t = seg.text;
-        if (t.length === 0) return;
+    paragraphs.forEach(function (para) {
+      if (para.type === "text") {
+        var t = para.text;
+        if (t.length === 0) {
+          var availBlank = pageAvailable() - curHeight;
+          if (availBlank < minLine) pushPage();
+          curItems.push({ type: "text", align: para.align, dir: para.dir, html: "&nbsp;" });
+          curHeight += minLine;
+          return;
+        }
         var breakpoints = computeBreakPoints(t);
         var idx = 0;
         while (idx < t.length) {
@@ -2089,28 +2260,28 @@
             pushPage();
             avail = pageAvailable();
           }
-          var cut = findCut(t, idx, breakpoints, avail);
+          var cut = findCutRich(t, para.runs, idx, breakpoints, avail);
           if (cut <= idx) cut = t.length;
-          var chunk = t.slice(idx, cut);
-          curItems.push({ type: "text", body: chunk });
-          curHeight += measureHeight(chunk);
+          var html = sliceRunsHTML(para.runs, idx, cut);
+          curItems.push({ type: "text", align: para.align, dir: para.dir, html: html });
+          curHeight += measureHeight(html);
           idx = cut;
         }
       } else {
-        var meta = imageMeta[seg.id];
+        var meta = imageMeta[para.id];
         if (!meta) {
           curItems.push({ type: "missing" });
           curHeight += 40;
           return;
         }
-        var dims = computeImageDisplaySize(meta.w, meta.h, seg.scale);
-        var capH = seg.caption ? measureCaptionHeight(seg.caption, dims.w, fontSizePx) : 0;
+        var dims = computeImageDisplaySize(meta.w, meta.h, para.scale);
+        var capH = para.caption ? measureCaptionHeight(para.caption, dims.w, fontSizePx) : 0;
         var blockH = dims.h + capH + IMAGE_MARGIN_TOP + IMAGE_MARGIN_BOTTOM;
         var avail = pageAvailable() - curHeight;
         if (blockH > avail && curItems.length > 0) {
           pushPage();
         }
-        curItems.push({ type: "image", dataUrl: meta.dataUrl, caption: seg.caption, w: dims.w, h: dims.h, id: seg.id, scale: seg.scale });
+        curItems.push({ type: "image", dataUrl: meta.dataUrl, caption: para.caption, w: dims.w, h: dims.h, id: para.id, scale: para.scale });
         curHeight += blockH;
       }
     });
@@ -2153,7 +2324,8 @@
   }
 
   function recomputePagination() {
-    currentPages = paginateContent(titleEl.value.trim(), currentFontSize, currentImageMeta);
+    var dateLabel = formatArabicDate(dateEl.value || todayISO());
+    currentPages = paginateContent(titleEl.value.trim(), dateLabel, currentFontSize, currentTitleFontSize, currentImageMeta);
   }
 
   function updatePreviewScale() {
@@ -2173,7 +2345,9 @@
       if (item.type === "text") {
         var span = document.createElement("span");
         span.className = "export-text-chunk";
-        span.textContent = item.body;
+        span.innerHTML = item.html;
+        span.dir = item.dir || "rtl";
+        if (item.align) span.style.textAlign = item.align;
         container.appendChild(span);
       } else if (item.type === "image") {
         var figure = document.createElement("figure");
@@ -2205,7 +2379,8 @@
     return items
       .map(function (item) {
         if (item.type === "text") {
-          return '<span style="display:block;white-space:pre-wrap;word-wrap:break-word;unicode-bidi:plaintext;">' + escapeHtml(item.body) + "</span>";
+          var alignStyle = item.align ? "text-align:" + item.align + ";" : "";
+          return '<span dir="' + (item.dir || "rtl") + '" style="display:block;white-space:pre-wrap;word-wrap:break-word;unicode-bidi:plaintext;' + alignStyle + '">' + item.html + "</span>";
         }
         if (item.type === "image") {
           var capHTML = item.caption
@@ -2282,12 +2457,13 @@
     var total = currentPages.length;
     var page = currentPages[currentPageIndex];
     exportPageTitleEl.textContent = page.title || "";
+    exportPageDateEl.textContent = page.date || "";
     renderPageItems(exportPageBodyEl, page.items, currentFontSize);
     renderImageSizeControls(page.items);
     exportPageFooterEl.textContent = (currentPageIndex + 1) + " / " + total;
     exportPageSignatureEl.textContent = currentSignature;
     exportPageBodyEl.style.fontSize = currentFontSize + "px";
-    exportPageTitleEl.style.fontSize = Math.round(currentFontSize * TITLE_FONT_RATIO) + "px";
+    exportPageTitleEl.style.fontSize = currentTitleFontSize + "px";
     exportPageIndicatorEl.textContent = (currentPageIndex + 1) + " / " + total;
     prevPageBtn.disabled = currentPageIndex === 0;
     nextPageBtn.disabled = currentPageIndex === total - 1;
@@ -2322,6 +2498,8 @@
     if (exportBtn.disabled) return;
     currentFontSize = parseInt(fontSizeRange.value, 10) || 50;
     fontSizeValueEl.textContent = String(currentFontSize);
+    currentTitleFontSize = resolveTitleFontSize(currentFontSize);
+    updateTitleFontStepperUI();
     setBgMode(getStoredBgMode() || "white");
     currentSignature = getStoredSignature();
     signatureInput.value = currentSignature;
@@ -2365,8 +2543,14 @@
         var h = document.createElement("h2");
         h.className = "export-page-title";
         h.textContent = page.title;
-        h.style.fontSize = Math.round(currentFontSize * TITLE_FONT_RATIO) + "px";
+        h.style.fontSize = currentTitleFontSize + "px";
         pageEl.appendChild(h);
+      }
+      if (page.date) {
+        var d = document.createElement("div");
+        d.className = "export-page-date";
+        d.textContent = page.date;
+        pageEl.appendChild(d);
       }
       var body = document.createElement("div");
       body.className = "export-page-body";
@@ -2398,7 +2582,10 @@
   function buildPageSVG(pageData, index, total, fontSizePx) {
     var colors = getExportColors();
     var titleHTML = pageData.title
-      ? '<h2 style="margin:0 0 ' + TITLE_MARGIN_BELOW + 'px 0;padding-bottom:14px;border-bottom:3px solid ' + colors.text + ';color:' + colors.text + ';font-weight:700;font-size:' + Math.round(fontSizePx * TITLE_FONT_RATIO) + 'px;line-height:1.3;display:inline-block;max-width:100%;">' + escapeHtml(pageData.title) + "</h2>"
+      ? '<h2 style="margin:0 0 ' + TITLE_MARGIN_BELOW + 'px 0;padding-bottom:14px;border-bottom:3px solid ' + colors.text + ';color:' + colors.text + ';font-weight:700;font-size:' + currentTitleFontSize + 'px;line-height:1.3;display:inline-block;max-width:100%;">' + escapeHtml(pageData.title) + "</h2>"
+      : "";
+    var dateHTML = pageData.date
+      ? '<div style="margin:0 0 ' + DATE_MARGIN_BELOW + 'px 0;font-size:' + DATE_FONT_SIZE + 'px;color:' + colors.text + ';opacity:0.6;">' + escapeHtml(pageData.date) + "</div>"
       : "";
     var bodyHTML = '<div dir="auto" style="text-align:start;font-size:' + fontSizePx + 'px;line-height:' + BODY_LINE_HEIGHT + ';color:' + colors.text + ';">' + itemsToHTML(pageData.items, fontSizePx, colors) + "</div>";
     var footerHTML = '<div style="position:absolute;bottom:34px;left:' + PAGE_PAD_X + 'px;font-size:15px;color:' + colors.text + ';opacity:' + colors.footerOpacity + ';">' + (index + 1) + " / " + total + "</div>";
@@ -2408,7 +2595,7 @@
 
     var inner =
       '<div xmlns="http://www.w3.org/1999/xhtml" style="width:' + PAGE_W + "px;height:" + PAGE_H + "px;box-sizing:border-box;background:" + colors.bg + ";padding:" + PAGE_PAD_TOP + "px " + PAGE_PAD_X + "px " + PAGE_PAD_BOTTOM + 'px;position:relative;direction:rtl;text-align:center;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,\'Noto Naskh Arabic\',\'Noto Sans Arabic\',\'Helvetica Neue\',Arial,sans-serif;">' +
-      titleHTML + bodyHTML + footerHTML + signatureHTML +
+      titleHTML + dateHTML + bodyHTML + footerHTML + signatureHTML +
       "</div>";
 
     return '<svg xmlns="http://www.w3.org/2000/svg" width="' + PAGE_W + '" height="' + PAGE_H + '"><foreignObject width="100%" height="100%">' + inner + "</foreignObject></svg>";
@@ -2793,6 +2980,20 @@
     formatToolbar.hidden = true;
   }
 
+  function normalizeFontValue(value) {
+    return (value || "").replace(/['"]/g, "").trim().toLowerCase();
+  }
+
+  function fontIdForValue(value) {
+    var normalized = normalizeFontValue(value);
+    for (var id in FONT_STACKS) {
+      if (Object.prototype.hasOwnProperty.call(FONT_STACKS, id) && normalizeFontValue(FONT_STACKS[id]) === normalized) {
+        return id;
+      }
+    }
+    return "default";
+  }
+
   function updateFormatButtonStates() {
     formatButtons.forEach(function (btn) {
       var pressed = false;
@@ -2803,6 +3004,13 @@
       }
       btn.setAttribute("aria-pressed", pressed ? "true" : "false");
     });
+    var fontValue = "";
+    try {
+      fontValue = document.queryCommandValue("fontName");
+    } catch (e) {
+      /* ignore */
+    }
+    fontFamilySelect.value = fontIdForValue(fontValue);
   }
 
   function showFormatToolbarAt(rect) {
@@ -2833,6 +3041,7 @@
       hideFormatToolbar();
       return;
     }
+    savedFormatRange = range.cloneRange();
     showFormatToolbarAt(rect);
     updateFormatButtonStates();
   }
@@ -3112,7 +3321,7 @@
   });
 
   formatToolbar.addEventListener("mousedown", function (e) {
-    e.preventDefault();
+    if (e.target.tagName !== "SELECT") e.preventDefault();
   });
 
   formatButtons.forEach(function (btn) {
@@ -3123,6 +3332,20 @@
       updateParagraphDirs();
       saveEntry();
     });
+  });
+
+  fontFamilySelect.addEventListener("change", function () {
+    var stack = FONT_STACKS[fontFamilySelect.value] || FONT_STACKS["default"];
+    editorEl.focus();
+    if (savedFormatRange) {
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(savedFormatRange);
+    }
+    document.execCommand("fontName", false, stack);
+    updateFormatButtonStates();
+    updateParagraphDirs();
+    saveEntry();
   });
 
   copyBtn.addEventListener("click", copyEntry);
@@ -3221,6 +3444,29 @@
   fontSizeRange.addEventListener("input", function () {
     currentFontSize = parseInt(fontSizeRange.value, 10) || 50;
     fontSizeValueEl.textContent = String(currentFontSize);
+    if (currentTitleFontSize < currentFontSize) {
+      currentTitleFontSize = currentFontSize;
+      saveTitleFontSize(currentTitleFontSize);
+    }
+    updateTitleFontStepperUI();
+    recomputePagination();
+    if (currentPageIndex >= currentPages.length) currentPageIndex = currentPages.length - 1;
+    renderCurrentPage();
+  });
+
+  titleFontIncreaseBtn.addEventListener("click", function () {
+    currentTitleFontSize = Math.min(TITLE_FONT_MAX, currentTitleFontSize + TITLE_FONT_STEP);
+    saveTitleFontSize(currentTitleFontSize);
+    updateTitleFontStepperUI();
+    recomputePagination();
+    if (currentPageIndex >= currentPages.length) currentPageIndex = currentPages.length - 1;
+    renderCurrentPage();
+  });
+
+  titleFontDecreaseBtn.addEventListener("click", function () {
+    currentTitleFontSize = Math.max(currentFontSize, currentTitleFontSize - TITLE_FONT_STEP);
+    saveTitleFontSize(currentTitleFontSize);
+    updateTitleFontStepperUI();
     recomputePagination();
     if (currentPageIndex >= currentPages.length) currentPageIndex = currentPages.length - 1;
     renderCurrentPage();
