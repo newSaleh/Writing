@@ -586,6 +586,24 @@
     outline-offset: -2px;
   }
 
+  .image-size-controls {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-bottom: 16px;
+  }
+
+  .image-size-controls[hidden] {
+    display: none;
+  }
+
+  .image-size-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
   .export-stage {
     flex: 1 1 auto;
     min-height: 0;
@@ -931,6 +949,8 @@
     </div>
   </div>
 
+  <div id="imageSizeControls" class="image-size-controls" hidden></div>
+
   <div class="export-stage">
     <button id="prevPage" class="nav-btn" type="button" aria-label="الصفحة السابقة">›</button>
     <div class="export-page-wrap">
@@ -1140,6 +1160,7 @@
   var fontSizeValueEl = document.getElementById("fontSizeValue");
   var bgWhiteBtn = document.getElementById("bgWhiteBtn");
   var bgBlackBtn = document.getElementById("bgBlackBtn");
+  var imageSizeControlsEl = document.getElementById("imageSizeControls");
   var exportPageWrapEl = document.querySelector(".export-page-wrap");
   var exportPageViewportEl = document.getElementById("exportPageViewport");
   var exportPageEl = document.getElementById("exportPage");
@@ -1231,7 +1252,11 @@
     exportBtn.disabled = !(titleEl.value.trim() || editorEl.value.trim());
   }
 
-  var IMAGE_MARKER_RE = /!\[([^\]]*)\]\(([^)]+)\)/g;
+  var IMAGE_MARKER_RE = /!\[([^\]]*)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)/g;
+  var IMAGE_SCALE_MIN = 0.4;
+  var IMAGE_SCALE_MAX = 1.6;
+  var IMAGE_SCALE_STEP = 0.2;
+  var IMAGE_SCALE_DEFAULT = 1;
 
   function stripImageMarkersToCaption(text) {
     return text.replace(IMAGE_MARKER_RE, function (whole, caption) {
@@ -1264,13 +1289,48 @@
       if (m.index > lastIndex) {
         segments.push({ type: "text", text: text.slice(lastIndex, m.index) });
       }
-      segments.push({ type: "image", caption: m[1], id: m[2] });
+      var scale = IMAGE_SCALE_DEFAULT;
+      if (m[3]) {
+        var parsed = parseFloat(m[3]);
+        if (!isNaN(parsed) && parsed >= IMAGE_SCALE_MIN && parsed <= IMAGE_SCALE_MAX) scale = parsed;
+      }
+      segments.push({ type: "image", caption: m[1], id: m[2], scale: scale });
       lastIndex = re.lastIndex;
     }
     if (lastIndex < text.length) {
       segments.push({ type: "text", text: text.slice(lastIndex) });
     }
     return segments;
+  }
+
+  function getMarkerScale(text, id) {
+    var idPattern = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    var re = new RegExp('!\\[[^\\]]*\\]\\(' + idPattern + '(?:\\s+"([^"]*)")?\\)');
+    var m = re.exec(text);
+    if (m && m[1]) {
+      var v = parseFloat(m[1]);
+      if (!isNaN(v) && v >= IMAGE_SCALE_MIN && v <= IMAGE_SCALE_MAX) return v;
+    }
+    return IMAGE_SCALE_DEFAULT;
+  }
+
+  function setMarkerScale(text, id, scale) {
+    var idPattern = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    var re = new RegExp('(!\\[[^\\]]*\\]\\(' + idPattern + ')(?:\\s+"[^"]*")?(\\))');
+    return text.replace(re, function (whole, head, tail) {
+      if (Math.abs(scale - IMAGE_SCALE_DEFAULT) < 0.001) return head + tail;
+      return head + ' "' + scale.toFixed(2) + '"' + tail;
+    });
+  }
+
+  function changeImageScale(id, delta) {
+    var current = getMarkerScale(editorEl.value, id);
+    var next = Math.round(Math.max(IMAGE_SCALE_MIN, Math.min(IMAGE_SCALE_MAX, current + delta)) * 100) / 100;
+    editorEl.value = setMarkerScale(editorEl.value, id, next);
+    saveEntry();
+    recomputePagination();
+    if (currentPageIndex >= currentPages.length) currentPageIndex = currentPages.length - 1;
+    renderCurrentPage();
   }
 
   function insertMarkerAtSavedCursor(marker) {
@@ -1412,11 +1472,24 @@
     return best;
   }
 
-  function computeImageDisplaySize(naturalW, naturalH) {
+  function computeImageDisplaySize(naturalW, naturalH, userScale) {
     var maxW = CONTENT_WIDTH;
     var maxH = IMAGE_MAX_DISPLAY_HEIGHT;
-    var scale = Math.min(maxW / naturalW, maxH / naturalH, 1);
-    return { w: Math.max(1, Math.round(naturalW * scale)), h: Math.max(1, Math.round(naturalH * scale)) };
+    var baseScale = Math.min(maxW / naturalW, maxH / naturalH, 1);
+    var w = naturalW * baseScale * (userScale || 1);
+    var h = naturalH * baseScale * (userScale || 1);
+    if (w > CONTENT_WIDTH) {
+      var shrinkW = CONTENT_WIDTH / w;
+      w *= shrinkW;
+      h *= shrinkW;
+    }
+    var absMaxH = IMAGE_MAX_DISPLAY_HEIGHT * 1.8;
+    if (h > absMaxH) {
+      var shrinkH = absMaxH / h;
+      w *= shrinkH;
+      h *= shrinkH;
+    }
+    return { w: Math.max(1, Math.round(w)), h: Math.max(1, Math.round(h)) };
   }
 
   function measureCaptionHeight(caption, displayWidth, fontSizePx) {
@@ -1474,14 +1547,14 @@
           curHeight += 40;
           return;
         }
-        var dims = computeImageDisplaySize(meta.w, meta.h);
+        var dims = computeImageDisplaySize(meta.w, meta.h, seg.scale);
         var capH = seg.caption ? measureCaptionHeight(seg.caption, dims.w, fontSizePx) : 0;
         var blockH = dims.h + capH + IMAGE_MARGIN_TOP + IMAGE_MARGIN_BOTTOM;
         var avail = pageAvailable() - curHeight;
         if (blockH > avail && curItems.length > 0) {
           pushPage();
         }
-        curItems.push({ type: "image", dataUrl: meta.dataUrl, caption: seg.caption, w: dims.w, h: dims.h });
+        curItems.push({ type: "image", dataUrl: meta.dataUrl, caption: seg.caption, w: dims.w, h: dims.h, id: seg.id, scale: seg.scale });
         curHeight += blockH;
       }
     });
@@ -1599,11 +1672,66 @@
       .join("");
   }
 
+  function renderImageSizeControls(items) {
+    imageSizeControlsEl.innerHTML = "";
+    var images = items.filter(function (it) {
+      return it.type === "image" && it.id;
+    });
+    if (images.length === 0) {
+      imageSizeControlsEl.hidden = true;
+      return;
+    }
+    imageSizeControlsEl.hidden = false;
+    images.forEach(function (item) {
+      var row = document.createElement("div");
+      row.className = "image-size-row";
+
+      var label = document.createElement("span");
+      label.className = "export-control-label";
+      label.textContent = "حجم الصورة";
+
+      var group = document.createElement("div");
+      group.className = "font-stepper";
+
+      var shrinkBtn = document.createElement("button");
+      shrinkBtn.type = "button";
+      shrinkBtn.className = "stepper-btn";
+      shrinkBtn.textContent = "－";
+      shrinkBtn.setAttribute("aria-label", "تصغير الصورة");
+      shrinkBtn.disabled = item.scale <= IMAGE_SCALE_MIN;
+      shrinkBtn.addEventListener("click", function () {
+        changeImageScale(item.id, -IMAGE_SCALE_STEP);
+      });
+
+      var valueEl = document.createElement("span");
+      valueEl.className = "stepper-value";
+      valueEl.textContent = Math.round(item.scale * 100) + "%";
+
+      var enlargeBtn = document.createElement("button");
+      enlargeBtn.type = "button";
+      enlargeBtn.className = "stepper-btn";
+      enlargeBtn.textContent = "＋";
+      enlargeBtn.setAttribute("aria-label", "تكبير الصورة");
+      enlargeBtn.disabled = item.scale >= IMAGE_SCALE_MAX;
+      enlargeBtn.addEventListener("click", function () {
+        changeImageScale(item.id, IMAGE_SCALE_STEP);
+      });
+
+      group.appendChild(shrinkBtn);
+      group.appendChild(valueEl);
+      group.appendChild(enlargeBtn);
+      row.appendChild(label);
+      row.appendChild(group);
+      imageSizeControlsEl.appendChild(row);
+    });
+  }
+
   function renderCurrentPage() {
     var total = currentPages.length;
     var page = currentPages[currentPageIndex];
     exportPageTitleEl.textContent = page.title || "";
     renderPageItems(exportPageBodyEl, page.items, currentFontSize);
+    renderImageSizeControls(page.items);
     exportPageFooterEl.textContent = (currentPageIndex + 1) + " / " + total;
     exportPageBodyEl.style.fontSize = currentFontSize + "px";
     exportPageTitleEl.style.fontSize = Math.round(currentFontSize * TITLE_FONT_RATIO) + "px";
