@@ -219,7 +219,6 @@
     line-height: 1.35;
     padding: 4px 2px;
     caret-color: var(--focus);
-    unicode-bidi: plaintext;
   }
 
   .title-input::placeholder {
@@ -287,7 +286,6 @@
     font-size: 18px;
     line-height: 1.9;
     padding: 2px;
-    unicode-bidi: plaintext;
     caret-color: var(--focus);
   }
 
@@ -721,6 +719,36 @@
     opacity: 0.55;
   }
 
+  .export-page-signature {
+    position: absolute;
+    bottom: 34px;
+    right: 90px;
+    font-size: 15px;
+    opacity: 0.55;
+  }
+
+  .export-page-signature:empty {
+    display: none;
+  }
+
+  .signature-input {
+    flex: 1 1 auto;
+    font-family: inherit;
+    font-size: 0.9rem;
+    color: var(--text);
+    background: transparent;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    padding: 8px 12px;
+    outline: none;
+  }
+
+  .signature-input:focus-visible {
+    border-color: var(--focus);
+    outline: 2px solid var(--focus);
+    outline-offset: 1px;
+  }
+
   .nav-btn {
     flex: 0 0 auto;
     width: 44px;
@@ -892,7 +920,7 @@
       id="title"
       class="title-input"
       type="text"
-      dir="auto"
+      dir="rtl"
       placeholder="عنوان اليوم…"
       autocomplete="off"
       autofocus
@@ -908,7 +936,7 @@
     <textarea
       id="editor"
       class="editor"
-      dir="auto"
+      dir="rtl"
       placeholder="ابدأ الكتابة هنا…"
       aria-label="مساحة الكتابة"
     ></textarea>
@@ -937,7 +965,7 @@
 
   <div class="export-controls">
     <label for="fontSizeRange" class="export-control-label">حجم الخط</label>
-    <input id="fontSizeRange" type="range" min="14" max="56" step="1" value="20" />
+    <input id="fontSizeRange" type="range" min="14" max="120" step="1" value="20" />
     <span id="fontSizeValue" class="export-control-value">20</span>
   </div>
 
@@ -951,18 +979,24 @@
 
   <div id="imageSizeControls" class="image-size-controls" hidden></div>
 
+  <div class="export-controls">
+    <label for="signatureInput" class="export-control-label">التوقيع</label>
+    <input id="signatureInput" class="signature-input" type="text" dir="rtl" placeholder="اختياري" />
+  </div>
+
   <div class="export-stage">
-    <button id="prevPage" class="nav-btn" type="button" aria-label="الصفحة السابقة">›</button>
+    <button id="nextPage" class="nav-btn" type="button" aria-label="الصفحة التالية">‹</button>
     <div class="export-page-wrap">
       <div id="exportPageViewport" class="export-page-viewport">
         <div id="exportPage" class="export-page">
           <h2 id="exportPageTitle" class="export-page-title"></h2>
           <div id="exportPageBody" class="export-page-body" dir="auto"></div>
           <div id="exportPageFooter" class="export-page-footer"></div>
+          <div id="exportPageSignature" class="export-page-signature"></div>
         </div>
       </div>
     </div>
-    <button id="nextPage" class="nav-btn" type="button" aria-label="الصفحة التالية">‹</button>
+    <button id="prevPage" class="nav-btn" type="button" aria-label="الصفحة السابقة">›</button>
   </div>
 
   <div class="export-actions">
@@ -1167,6 +1201,8 @@
   var exportPageTitleEl = document.getElementById("exportPageTitle");
   var exportPageBodyEl = document.getElementById("exportPageBody");
   var exportPageFooterEl = document.getElementById("exportPageFooter");
+  var exportPageSignatureEl = document.getElementById("exportPageSignature");
+  var signatureInput = document.getElementById("signatureInput");
   var prevPageBtn = document.getElementById("prevPage");
   var nextPageBtn = document.getElementById("nextPage");
   var exportPdfBtn = document.getElementById("exportPdfBtn");
@@ -1176,6 +1212,8 @@
   var titleMeasureBox = document.getElementById("titleMeasureBox");
 
   var BG_KEY = "dailyJournal.exportBg";
+  var SIGNATURE_KEY = "dailyJournal.signature";
+  var currentSignature = "";
   var currentFontSize = 20;
   var currentPages = [];
   var currentPageIndex = 0;
@@ -1389,6 +1427,22 @@
     captionDialog.hidden = true;
     document.removeEventListener("keydown", onCaptionDialogKeydown);
     pendingImageDataUrl = null;
+  }
+
+  function getStoredSignature() {
+    try {
+      return localStorage.getItem(SIGNATURE_KEY) || "";
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function saveSignature(value) {
+    try {
+      localStorage.setItem(SIGNATURE_KEY, value);
+    } catch (e) {
+      /* ignore */
+    }
   }
 
   function getStoredBgMode() {
@@ -1733,6 +1787,7 @@
     renderPageItems(exportPageBodyEl, page.items, currentFontSize);
     renderImageSizeControls(page.items);
     exportPageFooterEl.textContent = (currentPageIndex + 1) + " / " + total;
+    exportPageSignatureEl.textContent = currentSignature;
     exportPageBodyEl.style.fontSize = currentFontSize + "px";
     exportPageTitleEl.style.fontSize = Math.round(currentFontSize * TITLE_FONT_RATIO) + "px";
     exportPageIndicatorEl.textContent = (currentPageIndex + 1) + " / " + total;
@@ -1759,9 +1814,9 @@
     if (e.key === "Escape") {
       closeExport();
     } else if (e.key === "ArrowRight") {
-      goPrevPage();
-    } else if (e.key === "ArrowLeft") {
       goNextPage();
+    } else if (e.key === "ArrowLeft") {
+      goPrevPage();
     }
   }
 
@@ -1770,6 +1825,8 @@
     currentFontSize = parseInt(fontSizeRange.value, 10) || 20;
     fontSizeValueEl.textContent = String(currentFontSize);
     setBgMode(getStoredBgMode() || "white");
+    currentSignature = getStoredSignature();
+    signatureInput.value = currentSignature;
     exportOverlay.hidden = false;
     document.body.style.overflow = "hidden";
     document.addEventListener("keydown", onExportKeydown);
@@ -1825,6 +1882,13 @@
       footer.textContent = (i + 1) + " / " + total;
       pageEl.appendChild(footer);
 
+      if (currentSignature) {
+        var signature = document.createElement("div");
+        signature.className = "export-page-signature";
+        signature.textContent = currentSignature;
+        pageEl.appendChild(signature);
+      }
+
       printPagesEl.appendChild(pageEl);
     });
   }
@@ -1840,10 +1904,13 @@
       : "";
     var bodyHTML = '<div dir="auto" style="text-align:start;font-size:' + fontSizePx + 'px;line-height:' + BODY_LINE_HEIGHT + ';color:' + colors.text + ';">' + itemsToHTML(pageData.items, fontSizePx, colors) + "</div>";
     var footerHTML = '<div style="position:absolute;bottom:34px;left:' + PAGE_PAD_X + 'px;font-size:15px;color:' + colors.text + ';opacity:' + colors.footerOpacity + ';">' + (index + 1) + " / " + total + "</div>";
+    var signatureHTML = currentSignature
+      ? '<div style="position:absolute;bottom:34px;right:' + PAGE_PAD_X + 'px;font-size:15px;color:' + colors.text + ';opacity:' + colors.footerOpacity + ';">' + escapeHtml(currentSignature) + "</div>"
+      : "";
 
     var inner =
       '<div xmlns="http://www.w3.org/1999/xhtml" style="width:' + PAGE_W + "px;height:" + PAGE_H + "px;box-sizing:border-box;background:" + colors.bg + ";padding:" + PAGE_PAD_TOP + "px " + PAGE_PAD_X + "px " + PAGE_PAD_BOTTOM + 'px;position:relative;direction:rtl;text-align:center;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,\'Noto Naskh Arabic\',\'Noto Sans Arabic\',\'Helvetica Neue\',Arial,sans-serif;">' +
-      titleHTML + bodyHTML + footerHTML +
+      titleHTML + bodyHTML + footerHTML + signatureHTML +
       "</div>";
 
     return '<svg xmlns="http://www.w3.org/2000/svg" width="' + PAGE_W + '" height="' + PAGE_H + '"><foreignObject width="100%" height="100%">' + inner + "</foreignObject></svg>";
@@ -2186,6 +2253,12 @@
   });
   bgBlackBtn.addEventListener("click", function () {
     setBgMode("black");
+  });
+
+  signatureInput.addEventListener("input", function () {
+    currentSignature = signatureInput.value;
+    saveSignature(currentSignature);
+    exportPageSignatureEl.textContent = currentSignature;
   });
 
   fontSizeRange.addEventListener("input", function () {
