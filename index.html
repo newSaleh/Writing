@@ -1515,6 +1515,8 @@
   var CAPTION_FONT_RATIO = 0.72;
   var IMAGE_STORE_MAX_DIM = 1800;
   var IMAGE_STORE_QUALITY = 0.9;
+  var COPY_IMAGE_MAX_DIM = 1400;
+  var COPY_IMAGE_QUALITY = 0.75;
 
   var DB_NAME = "dailyJournalImages";
   var DB_STORE = "images";
@@ -1589,6 +1591,27 @@
     var webp = canvas.toDataURL("image/webp", quality);
     if (webp.indexOf("data:image/webp") === 0) return webp;
     return canvas.toDataURL("image/jpeg", quality);
+  }
+
+  function compressImageForClipboard(dataUrl) {
+    return new Promise(function (resolve) {
+      var img = new Image();
+      img.onload = function () {
+        var scale = Math.min(1, COPY_IMAGE_MAX_DIM / Math.max(img.naturalWidth, img.naturalHeight));
+        var w = Math.max(1, Math.round(img.naturalWidth * scale));
+        var h = Math.max(1, Math.round(img.naturalHeight * scale));
+        var canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        var ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(encodeCanvasDataURL(canvas, COPY_IMAGE_QUALITY));
+      };
+      img.onerror = function () {
+        resolve(dataUrl);
+      };
+      img.src = dataUrl;
+    });
   }
 
   function processImageFile(file) {
@@ -3048,17 +3071,32 @@
     return parts.join("\n");
   }
 
-  function editorToRichHTML() {
+  function imageFigureToHTML(fig, imageMap) {
+    var id = fig.dataset.imageId;
+    var cap = fig.dataset.caption;
+    var imgEl = fig.querySelector("img");
+    var src = (imageMap && imageMap[id]) || (imgEl && imgEl.src) || "";
+    if (!src) {
+      return "<div>" + (cap ? "[صورة: " + escapeHtml(cap) + "]" : "[صورة]") + "</div>";
+    }
+    var capHTML = cap ? '<div style="text-align:center;opacity:0.7;font-size:0.85em;margin-top:4px;">' + escapeHtml(cap) + "</div>" : "";
+    return (
+      '<div style="text-align:center;margin:10px 0;">' +
+      '<img src="' + src + '" style="max-width:100%;display:block;margin:0 auto;" />' +
+      capHTML +
+      "</div>"
+    );
+  }
+
+  function editorToRichHTML(imageMap) {
     var parts = [];
     Array.prototype.forEach.call(editorEl.childNodes, function (node) {
       if (isImageFigure(node)) {
-        var cap = node.dataset.caption;
-        parts.push("<div>" + (cap ? "[صورة: " + escapeHtml(cap) + "]" : "[صورة]") + "</div>");
+        parts.push(imageFigureToHTML(node, imageMap));
       } else if (node.nodeType === 1 && node.querySelector && node.querySelector(".editor-figure")) {
         Array.prototype.forEach.call(node.childNodes, function (inner) {
           if (isImageFigure(inner)) {
-            var c = inner.dataset.caption;
-            parts.push("<div>" + (c ? "[صورة: " + escapeHtml(c) + "]" : "[صورة]") + "</div>");
+            parts.push(imageFigureToHTML(inner, imageMap));
           } else {
             parts.push(paragraphToHTML(inner));
           }
@@ -3175,26 +3213,51 @@
     return lines.join("\n");
   }
 
+  function buildCopyImageMap() {
+    var ids = collectImageIdsFromEditor();
+    return Promise.all(
+      ids.map(function (id) {
+        var fig = editorEl.querySelector('.editor-figure[data-image-id="' + id + '"]');
+        var imgEl = fig && fig.querySelector("img");
+        var src = imgEl && imgEl.src;
+        if (!src || src.indexOf("data:") !== 0) return Promise.resolve([id, src || ""]);
+        return compressImageForClipboard(src).then(function (compressed) {
+          return [id, compressed];
+        });
+      })
+    ).then(function (pairs) {
+      var map = {};
+      pairs.forEach(function (p) {
+        map[p[0]] = p[1];
+      });
+      return map;
+    });
+  }
+
   function buildCopyHTML() {
     var title = titleEl.value.trim();
     var dateLabel = formatArabicDate(dateEl.value || todayISO());
     var titleHTML = title ? '<div style="font-weight:700;font-size:1.3em;margin-bottom:6px;">' + escapeHtml(title) + "</div>" : "";
-    return (
-      '<div dir="rtl" style="font-family:-apple-system,sans-serif;white-space:pre-wrap;">' +
-      titleHTML +
-      '<div style="margin-bottom:18px;">' + escapeHtml(dateLabel) + "</div>" +
-      editorToRichHTML() +
-      "</div>"
-    );
+    return buildCopyImageMap().then(function (imageMap) {
+      return (
+        '<div dir="rtl" style="font-family:-apple-system,sans-serif;white-space:pre-wrap;">' +
+        titleHTML +
+        '<div style="margin-bottom:18px;">' + escapeHtml(dateLabel) + "</div>" +
+        editorToRichHTML(imageMap) +
+        "</div>"
+      );
+    });
   }
 
   function copyEntry() {
     var plainText = buildCopyText();
     if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
-      var html = buildCopyHTML();
+      var htmlPromise = buildCopyHTML().then(function (html) {
+        return new Blob([html], { type: "text/html" });
+      });
       var item = new ClipboardItem({
         "text/plain": new Blob([plainText], { type: "text/plain" }),
-        "text/html": new Blob([html], { type: "text/html" })
+        "text/html": htmlPromise
       });
       navigator.clipboard.write([item]).then(showCopyFeedback).catch(function () {
         copyToClipboard(plainText);
