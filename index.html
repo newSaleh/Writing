@@ -539,6 +539,22 @@
     flex: 1 1 0;
   }
 
+  .ocr-spinner {
+    width: 36px;
+    height: 36px;
+    margin: 0 auto 18px;
+    border: 3px solid var(--border-strong);
+    border-top-color: var(--text);
+    border-radius: 50%;
+    animation: ocr-spin 0.8s linear infinite;
+  }
+
+  @keyframes ocr-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
   .btn-secondary {
     background: transparent;
     color: var(--text);
@@ -1269,6 +1285,13 @@
         </svg>
       </button>
       <input id="imageFileInput" class="visually-hidden" type="file" accept="image/*" tabindex="-1" aria-hidden="true" />
+      <button id="ocrBtn" class="icon-btn" type="button" aria-label="مسح نص مكتوب بخط اليد">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 8a2 2 0 0 1 2-2h1.2a1 1 0 0 0 .8-.4l1-1.2a1 1 0 0 1 .8-.4h4.4a1 1 0 0 1 .8.4l1 1.2a1 1 0 0 0 .8.4H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z" />
+          <circle cx="12" cy="13" r="3.2" />
+        </svg>
+      </button>
+      <input id="ocrFileInput" class="visually-hidden" type="file" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true" />
       <button id="focusModeBtn" class="icon-btn" type="button" aria-pressed="false" aria-label="وضع التركيز">
         <svg class="icon-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <polyline points="8 3 3 3 3 8"></polyline>
@@ -1477,6 +1500,25 @@
   </div>
 </div>
 
+<div id="ocrProgressDialog" class="dialog-overlay" hidden>
+  <div class="dialog" role="status" aria-live="polite" aria-labelledby="ocrProgressText">
+    <div class="ocr-spinner" aria-hidden="true"></div>
+    <p id="ocrProgressText" class="dialog-text">جارٍ التحضير…</p>
+    <div class="dialog-actions">
+      <button id="ocrCancelBtn" class="btn btn-secondary" type="button">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<div id="ocrErrorDialog" class="dialog-overlay" hidden>
+  <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="ocrErrorText">
+    <p id="ocrErrorText" class="dialog-text">تحتاج هذه الميزة إلى اتصال بالإنترنت (لتنزيل أداة قراءة النص عند أول استخدام). تحقّق من اتصالك وحاول مرة أخرى.</p>
+    <div class="dialog-actions">
+      <button id="ocrErrorOkBtn" class="btn btn-primary" type="button">حسنًا</button>
+    </div>
+  </div>
+</div>
+
 <div id="liveStatus" class="visually-hidden" role="status" aria-live="polite"></div>
 
 <script>
@@ -1620,6 +1662,218 @@
     });
   }
 
+  function prepareOcrImage(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        var img = new Image();
+        img.onload = function () {
+          var scale = Math.min(1, OCR_MAX_DIM / Math.max(img.naturalWidth, img.naturalHeight));
+          if (scale >= 1) {
+            resolve(reader.result);
+            return;
+          }
+          var w = Math.max(1, Math.round(img.naturalWidth * scale));
+          var h = Math.max(1, Math.round(img.naturalHeight * scale));
+          var canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          var ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL("image/png"));
+        };
+        img.onerror = function () {
+          reject(new Error("image decode failed"));
+        };
+        img.src = reader.result;
+      };
+      reader.onerror = function () {
+        reject(reader.error);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function loadTesseractScript() {
+    if (window.Tesseract) return Promise.resolve();
+    if (tesseractLoadPromise) return tesseractLoadPromise;
+    tesseractLoadPromise = new Promise(function (resolve, reject) {
+      var script = document.createElement("script");
+      script.src = OCR_SCRIPT_URL;
+      script.onload = function () {
+        resolve();
+      };
+      script.onerror = function () {
+        tesseractLoadPromise = null;
+        reject(new Error("failed to load tesseract.js"));
+      };
+      document.head.appendChild(script);
+    });
+    return tesseractLoadPromise;
+  }
+
+  function updateOcrProgress(m) {
+    if (!m) return;
+    var label = (m.status && OCR_STATUS_LABELS[m.status]) || "جارٍ المعالجة…";
+    if (typeof m.progress === "number" && m.progress > 0) {
+      label += " " + Math.round(m.progress * 100) + "%";
+    }
+    ocrProgressText.textContent = label;
+  }
+
+  function openOcrProgressDialog() {
+    ocrProgressDialog.hidden = false;
+    document.addEventListener("keydown", onOcrProgressKeydown);
+  }
+
+  function closeOcrProgressDialog() {
+    ocrProgressDialog.hidden = true;
+    document.removeEventListener("keydown", onOcrProgressKeydown);
+  }
+
+  function onOcrProgressKeydown(e) {
+    if (e.key === "Escape") {
+      ocrCancelled = true;
+      closeOcrProgressDialog();
+      ocrBtn.disabled = false;
+    }
+  }
+
+  function openOcrErrorDialog() {
+    ocrErrorDialog.hidden = false;
+    document.addEventListener("keydown", onOcrErrorKeydown);
+    ocrErrorOkBtn.focus();
+  }
+
+  function closeOcrErrorDialog() {
+    ocrErrorDialog.hidden = true;
+    document.removeEventListener("keydown", onOcrErrorKeydown);
+    ocrBtn.focus();
+  }
+
+  function onOcrErrorKeydown(e) {
+    if (e.key === "Escape") closeOcrErrorDialog();
+  }
+
+  function runOcr(file) {
+    ocrCancelled = false;
+    ocrBtn.disabled = true;
+    openOcrProgressDialog();
+    updateOcrProgress({ status: "loading tesseract core" });
+
+    if (typeof navigator.onLine === "boolean" && !navigator.onLine) {
+      closeOcrProgressDialog();
+      ocrBtn.disabled = false;
+      openOcrErrorDialog();
+      return;
+    }
+
+    prepareOcrImage(file)
+      .then(function (dataUrl) {
+        if (ocrCancelled) return null;
+        return loadTesseractScript().then(function () {
+          if (ocrCancelled) return null;
+          return Tesseract.recognize(dataUrl, OCR_LANGS, { logger: updateOcrProgress });
+        });
+      })
+      .then(function (result) {
+        if (ocrCancelled || !result) return;
+        var text = ((result.data && result.data.text) || "").trim();
+        if (!text) {
+          window.alert("لم يتم العثور على نص واضح في هذه الصورة. جرّب صورة أوضح.");
+          return;
+        }
+        insertTextAtCursor(text);
+      })
+      .catch(function () {
+        if (!ocrCancelled) openOcrErrorDialog();
+      })
+      .finally(function () {
+        closeOcrProgressDialog();
+        ocrBtn.disabled = false;
+      });
+  }
+
+  function insertTextAtCursor(text) {
+    var lines = text.split(/\r\n|\r|\n/);
+    while (lines.length && lines[0].trim() === "") lines.shift();
+    while (lines.length && lines[lines.length - 1].trim() === "") lines.pop();
+    if (lines.length === 0) return;
+
+    var lineDivs = lines.map(function (line) {
+      var div = document.createElement("div");
+      var trimmed = line.trim();
+      div.setAttribute("dir", detectDir(trimmed));
+      if (trimmed.length === 0) {
+        div.appendChild(document.createElement("br"));
+      } else {
+        div.textContent = trimmed;
+      }
+      return div;
+    });
+    var lastDiv = lineDivs[lineDivs.length - 1];
+
+    if (editorEl.classList.contains("is-empty")) {
+      editorEl.innerHTML = "";
+      lineDivs.forEach(function (div) {
+        editorEl.appendChild(div);
+      });
+      placeCaretAtStart(lastDiv);
+    } else {
+      var range = pendingOcrRange && editorEl.contains(pendingOcrRange.commonAncestorContainer) ? pendingOcrRange : null;
+      if (!range) {
+        range = document.createRange();
+        range.selectNodeContents(editorEl);
+        range.collapse(false);
+      }
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      var currentRange = sel.getRangeAt(0);
+      currentRange.deleteContents();
+      currentRange.collapse(true);
+
+      var block = getBlockAncestor(currentRange.startContainer);
+      if (block && block !== editorEl) {
+        var afterRange = document.createRange();
+        afterRange.setStart(currentRange.startContainer, currentRange.startOffset);
+        afterRange.setEndAfter(block.lastChild);
+        var afterFragment = afterRange.extractContents();
+        var afterDiv = document.createElement("div");
+        afterDiv.setAttribute("dir", block.getAttribute("dir") || "rtl");
+        afterDiv.appendChild(afterFragment);
+        if (afterDiv.textContent === "" && !afterDiv.querySelector(".editor-figure")) {
+          afterDiv.innerHTML = "";
+          afterDiv.appendChild(document.createElement("br"));
+        }
+        if (block.childNodes.length === 0) {
+          block.appendChild(document.createElement("br"));
+        }
+        var insertAfter = block;
+        lineDivs.forEach(function (div) {
+          insertAfter.parentNode.insertBefore(div, insertAfter.nextSibling);
+          insertAfter = div;
+        });
+        insertAfter.parentNode.insertBefore(afterDiv, insertAfter.nextSibling);
+        placeCaretAtStart(afterDiv);
+      } else {
+        var refNode = currentRange.startContainer === editorEl ? (editorEl.childNodes[currentRange.startOffset] || null) : null;
+        lineDivs.forEach(function (div) {
+          if (refNode) editorEl.insertBefore(div, refNode);
+          else editorEl.appendChild(div);
+        });
+        placeCaretAtStart(lastDiv);
+      }
+    }
+
+    updateEditorEmptyState();
+    applyDirToAllParagraphs();
+    editorEl.focus();
+    saveEntry();
+    updateWordCount();
+    updateExportAvailability();
+  }
+
   var titleEl = document.getElementById("title");
   var dateEl = document.getElementById("date");
   var editorEl = document.getElementById("editor");
@@ -1654,6 +1908,13 @@
 
   var insertImageBtn = document.getElementById("insertImageBtn");
   var imageFileInput = document.getElementById("imageFileInput");
+  var ocrBtn = document.getElementById("ocrBtn");
+  var ocrFileInput = document.getElementById("ocrFileInput");
+  var ocrProgressDialog = document.getElementById("ocrProgressDialog");
+  var ocrProgressText = document.getElementById("ocrProgressText");
+  var ocrCancelBtn = document.getElementById("ocrCancelBtn");
+  var ocrErrorDialog = document.getElementById("ocrErrorDialog");
+  var ocrErrorOkBtn = document.getElementById("ocrErrorOkBtn");
   var focusModeBtn = document.getElementById("focusModeBtn");
   var captionDialog = document.getElementById("captionDialog");
   var captionInput = document.getElementById("captionInput");
@@ -1702,6 +1963,20 @@
   var currentImageMeta = {};
   var pendingImageDataUrl = null;
   var pendingRange = null;
+  var pendingOcrRange = null;
+  var ocrCancelled = false;
+  var tesseractLoadPromise = null;
+  var OCR_SCRIPT_URL = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+  var OCR_MAX_DIM = 2200;
+  var OCR_LANGS = "ara+eng";
+  var OCR_STATUS_LABELS = {
+    "loading tesseract core": "جارٍ تحميل أداة القراءة…",
+    "initializing tesseract": "جارٍ التهيئة…",
+    "initialized tesseract": "جارٍ التهيئة…",
+    "loading language traineddata": "جارٍ تنزيل حزمة اللغة (أول مرة فقط)…",
+    "initializing api": "جارٍ التهيئة…",
+    "recognizing text": "جارٍ قراءة النص…"
+  };
   var points = [];
   var pointsPinned = false;
   var pointsPanelOpen = false;
@@ -3392,6 +3667,30 @@
   });
   captionDialog.addEventListener("click", function (e) {
     if (e.target === captionDialog) closeCaptionDialog();
+  });
+
+  ocrBtn.addEventListener("click", function () {
+    var sel = window.getSelection();
+    pendingOcrRange = sel.rangeCount && editorEl.contains(sel.getRangeAt(0).commonAncestorContainer) ? sel.getRangeAt(0).cloneRange() : null;
+    ocrFileInput.value = "";
+    ocrFileInput.click();
+  });
+
+  ocrFileInput.addEventListener("change", function () {
+    var file = ocrFileInput.files && ocrFileInput.files[0];
+    if (!file) return;
+    runOcr(file);
+  });
+
+  ocrCancelBtn.addEventListener("click", function () {
+    ocrCancelled = true;
+    closeOcrProgressDialog();
+    ocrBtn.disabled = false;
+  });
+
+  ocrErrorOkBtn.addEventListener("click", closeOcrErrorDialog);
+  ocrErrorDialog.addEventListener("click", function (e) {
+    if (e.target === ocrErrorDialog) closeOcrErrorDialog();
   });
 
   exportBtn.addEventListener("click", openExport);
