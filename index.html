@@ -1734,14 +1734,6 @@
     "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"
   ];
 
-  function todayISO() {
-    var now = new Date();
-    var y = now.getFullYear();
-    var m = String(now.getMonth() + 1).padStart(2, "0");
-    var d = String(now.getDate()).padStart(2, "0");
-    return y + "-" + m + "-" + d;
-  }
-
   function formatArabicDate(isoDate) {
     var parts = isoDate.split("-");
     if (parts.length !== 3) return isoDate;
@@ -1897,7 +1889,7 @@
       var sliceEnd = Math.min(end, runEnd) - runStart;
       var piece = run.text.slice(sliceStart, sliceEnd);
       if (piece === "") continue;
-      piece = escapeHtml(piece).replace(/\n/g, "<br>");
+      piece = escapeHtml(piece).replace(/\n/g, "<br/>");
       if (run.bold) piece = "<b>" + piece + "</b>";
       if (run.italic) piece = "<i>" + piece + "</i>";
       if (run.underline) piece = "<u>" + piece + "</u>";
@@ -2320,7 +2312,7 @@
   }
 
   function recomputePagination() {
-    var dateLabel = formatArabicDate(dateEl.value || todayISO());
+    var dateLabel = dateEl.value ? formatArabicDate(dateEl.value) : "";
     currentPages = paginateContent(titleEl.value.trim(), dateLabel, currentFontSize, currentTitleFontSize, currentImageMeta);
   }
 
@@ -2526,7 +2518,7 @@
   function fileBaseName() {
     var title = titleEl.value.trim();
     var base = title ? title.replace(/\s+/g, "-") : "يوميات";
-    return base + "-" + (dateEl.value || todayISO());
+    return dateEl.value ? base + "-" + dateEl.value : base;
   }
 
   function buildPrintPages() {
@@ -3202,13 +3194,14 @@
 
   function buildCopyText() {
     var title = titleEl.value.trim();
-    var dateLabel = formatArabicDate(dateEl.value || todayISO());
     var text = editorToPlainText();
     var lines = [];
     if (title) {
       lines.push(title, "");
     }
-    lines.push(dateLabel, "", "");
+    if (dateEl.value) {
+      lines.push(formatArabicDate(dateEl.value), "", "");
+    }
     lines.push(text);
     return lines.join("\n");
   }
@@ -3236,13 +3229,13 @@
 
   function buildCopyHTML() {
     var title = titleEl.value.trim();
-    var dateLabel = formatArabicDate(dateEl.value || todayISO());
     var titleHTML = title ? '<div style="font-weight:700;font-size:1.3em;margin-bottom:6px;">' + escapeHtml(title) + "</div>" : "";
+    var dateHTML = dateEl.value ? '<div style="margin-bottom:18px;">' + escapeHtml(formatArabicDate(dateEl.value)) + "</div>" : "";
     return buildCopyImageMap().then(function (imageMap) {
       return (
         '<div dir="rtl" style="font-family:-apple-system,sans-serif;white-space:pre-wrap;">' +
         titleHTML +
-        '<div style="margin-bottom:18px;">' + escapeHtml(dateLabel) + "</div>" +
+        dateHTML +
         editorToRichHTML(imageMap) +
         "</div>"
       );
