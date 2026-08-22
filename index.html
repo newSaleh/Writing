@@ -3187,10 +3187,10 @@
         editorEl.innerHTML = "";
       }
       applyDirToAllParagraphs();
-      dateEl.value = saved.date || todayISO();
+      dateEl.value = saved.date || "";
       points = Array.isArray(saved.points) ? saved.points : [];
     } else {
-      dateEl.value = todayISO();
+      dateEl.value = "";
       points = [];
     }
     updateEditorEmptyState();
@@ -3331,7 +3331,7 @@
     titleEl.value = "";
     editorEl.innerHTML = "";
     updateEditorEmptyState();
-    dateEl.value = todayISO();
+    dateEl.value = "";
     points = [];
     renderPoints();
     try {
